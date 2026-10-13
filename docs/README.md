@@ -1,6 +1,6 @@
 # NEXO 3D — Centro de documentación
 
-**Edición:** 0.1 · **Fecha:** 2026-10-13 · **Estado:** especificación preliminar, no implementación.
+**Edición:** 0.1 · **Fecha:** 2026-10-13 · **Estado:** especificación de producto con implementaciones experimentales en ramas, aún sin versión instalable.
 
 > **Convención de estados:** **DECIDIDO** (regla de producto), **PROPUESTO** (diseño sin PoC), **EN EVALUACIÓN** (tecnología por validar), **IMPLEMENTADO** (código probado y reproducible). Un enlace a repositorio ajeno no es una integración.
 
@@ -21,6 +21,7 @@
 | 12 | [Guía para construir MVP](MVP_IMPLEMENTATION.md) | Tickets técnicos en orden |
 | 12a | [CAD 2D → 3D → Render](CAD_2D_MVP.md) | Prototipo de habitación 4×3 m y muro vinculado |
 | 12b | [Hew como motor experimental](HEW_FOUNDATION.md) | Adaptador CAD a sólidos reales Hew, GLB y render Blender |
+| 12c | [Proyecto único CAD + Hew + Render](HEW_UNIFIED_PROJECT.md) | Esquema v3, guardado nativo, apertura y límites |
 | 13 | [Estrategia de pruebas](TEST_STRATEGY.md) | Fixtures, tests, plataforma, evidencia |
 | 14 | [Desarrollo](DEVELOPMENT.md) | Convenciones y primer bootstrap |
 | 15 | [Licencias y activos](LICENSING.md) | AGPL, marcas, terceros y copyright |
