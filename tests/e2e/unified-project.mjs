@@ -52,7 +52,7 @@ try{
   await page.locator('#new-project').click();
   await page.locator('#status').filter({hasText:'Nuevo proyecto CAD + Hew preparado'}).waitFor();
   await page.locator('#project-file').setInputFiles(await saved.download.path());
-  await page.locator('#status').filter({hasText:/Proyecto CAD \+ Hew editable recuperado/).waitFor();
+  await page.locator('#status').filter({hasText:/Proyecto CAD \+ Hew editable recuperado/}).waitFor();
   await page.locator('#hew-state').filter({hasText:/Modelo Hew editable recuperado/}).waitFor({timeout:90000});
   const savedAgain=await save();
   assert.equal(savedAgain.project.id,saved.project.id,'project identity survives');
