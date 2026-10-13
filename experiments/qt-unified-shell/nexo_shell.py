@@ -9,11 +9,13 @@ import ctypes
 import os
 import subprocess
 import sys
+import threading
 import time
 from ctypes import wintypes
 from pathlib import Path
 
 from workspace_contract import launch_for, selected_plan
+from cad_revision_diff import snapshot_dxf, compare_layers, describe_changes
 from bridge_state import BridgeState, start_server
 from bridge_runtime import (
     bundled_path, install_plugin, model_environment,
@@ -23,7 +25,7 @@ from bridge_runtime import (
 if sys.platform != "win32":
     raise SystemExit("Esta prueba de ventanas nativas solo funciona en Windows.")
 
-from PySide6.QtCore import QSettings, Qt, QTimer, QUrl
+from PySide6.QtCore import QObject, QSettings, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QLabel, QMainWindow, QMessageBox,
@@ -138,6 +140,11 @@ class EditorPane(QWidget):
         self.timed_out = False
 
 
+class CadScanEvents(QObject):
+    # Workers emit results; GUI widgets are touched only on the main Qt thread.
+    finished = Signal(str, str, object, str)
+
+
 class NexoShell(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -145,6 +152,12 @@ class NexoShell(QMainWindow):
         self.resize(1450, 900)
         self.settings = QSettings("NEXO", "NativeIntegrationPoC")
         self.plan: Path | None = None
+        self._cad_scan_events = CadScanEvents(self)
+        self._cad_scan_events.finished.connect(self._cad_scan_finished)
+        self._cad_scan_running = False
+        self._cad_layer_snapshot = None
+        self._cad_last_diff = None
+        self._cad_diff_error = ""
         # A preview GLB is never the user's saved IGZ; each run gets its own path.
         self.bridge_model = preview_model_path()
         self.bridge = BridgeState(model=self.bridge_model)
@@ -180,11 +193,69 @@ class NexoShell(QMainWindow):
         tb.addAction("Render Live", lambda: self._switch("render"))
         tb.addSeparator()
         tb.addAction("Abrir DWG / DXF", self._choose_plan)
+        tb.addAction("Cambios CAD", self._show_cad_changes)
         tb.addAction("Enviar plano a Modelado", self._send_to_model)
         tb.addAction("Instalar extensión NEXO", self._install_live_extension)
         tb.addSeparator()
         tb.addAction("IngeCAD.exe", lambda: self._choose_exe("cad"))
         tb.addAction("IngeTrazo.exe", lambda: self._choose_exe("model"))
+
+    def _show_cad_changes(self):
+        if self._cad_diff_error:
+            message = self._cad_diff_error
+        elif self._cad_last_diff is None:
+            message = "Abre y guarda un DXF para comparar sus capas."
+        else:
+            delta = self._cad_last_diff
+            lines = [describe_changes(delta)]
+            if not delta["initial"]:
+                for key, label in (
+                    ("added", "Capas nuevas"),
+                    ("removed", "Capas eliminadas"),
+                    ("changed", "Capas modificadas"),
+                ):
+                    if delta[key]:
+                        lines.append(f"{label}: " + ", ".join(delta[key]))
+            lines.append("Las geometrías 3D no se reconstruyen automáticamente.")
+            message = "\n\n".join(lines)
+        QMessageBox.information(self, "NEXO · Cambios detectados en CAD", message)
+
+    def _start_cad_scan(self):
+        if self._cad_scan_running:
+            return
+        published = self.bridge.cad
+        if published is None or published.path.suffix.lower() != ".dxf":
+            return
+        self._cad_scan_running = True
+        source, digest = str(published.path), published.sha256
+
+        def process():
+            try:
+                layers = snapshot_dxf(Path(source))
+                error = ""
+            except Exception as exc:
+                layers = None
+                error = f"No se pudo analizar el DXF ({type(exc).__name__}): {exc}"
+            self._cad_scan_events.finished.emit(source, digest, layers, error)
+
+        threading.Thread(target=process, daemon=True, name="nexo-cad-diff").start()
+
+    def _cad_scan_finished(self, source, digest, layers, error):
+        self._cad_scan_running = False
+        current = self.bridge.cad
+        if current is None or str(current.path) != source or current.sha256 != digest:
+            # Another save occurred while scanning, or the selected DXF
+            # changed. Discard the stale result; scan current state instead.
+            self._start_cad_scan()
+            return
+        self._cad_diff_error = error
+        if error:
+            self.statusBar().showMessage(error, 8000)
+            return
+        delta = compare_layers(self._cad_layer_snapshot, layers)
+        self._cad_layer_snapshot = layers
+        self._cad_last_diff = delta
+        self.statusBar().showMessage(describe_changes(delta), 12000)
 
     def _make_render_pane(self):
         pane = QWidget()
@@ -248,6 +319,9 @@ class NexoShell(QMainWindow):
                 "La extensión enlaza el DXF al iniciar y no cambia de archivo en caliente.")
             return
         self.plan = picked
+        self._cad_layer_snapshot = None
+        self._cad_last_diff = None
+        self._cad_diff_error = ""
         self.bridge.configure(
             plan=self.plan if self.plan and self.plan.suffix.lower() == ".dxf" else None,
             model=self.bridge_model)
@@ -321,6 +395,8 @@ class NexoShell(QMainWindow):
 
     def _poll(self):
         changed = self.bridge.poll()
+        if "cad" in changed:
+            self._start_cad_scan()
         if changed:
             revisions = self.bridge.snapshot()
             updated = ", ".join(f"{key}: r{revisions[key]['revision']}"
