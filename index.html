@@ -50,10 +50,17 @@
             <button id="hew-to-render" title="Envía copia GLB del modelador Hew al espacio Render">Actualizar Render</button>
             <span id="hew-state" role="status">Modelador Hew local · preparándose</span>
           </div>
-          <div id="hew-missing" hidden>
-            <h2>Modelador Hew aún no compilado</h2>
-            <p>Para activar las herramientas profesionales de Hew, ejecuta <code>npm run hew:setup</code> en la carpeta NEXO 3D. Después vuelve a abrir Modelado.</p>
-            <p>Este proceso utiliza software libre descargado y compilado localmente. No se enviarán planos a ningún servidor.</p>
+          <div id="hew-loading" role="status" hidden>
+            <h2>Preparando Modelado 3D</h2>
+            <p>Iniciando Hew y su motor de geometría WebAssembly. El primer arranque puede tardar unos segundos.</p>
+          </div>
+          <div id="hew-missing" role="alert" hidden>
+            <h2>Hew todavía no está disponible</h2>
+            <p id="hew-error-detail">No encontramos el modelador. Tu plano CAD y el resto del proyecto siguen intactos.</p>
+            <p>En una terminal, dentro de la carpeta del proyecto NEXO 3D, ejecuta:</p>
+            <code>npm run hew:setup</code>
+            <p>Cuando termine, vuelve a esta pestaña y pulsa Comprobar de nuevo.</p>
+            <button id="hew-retry" type="button">Comprobar de nuevo</button>
           </div>
           <iframe id="hew-frame" title="Hew · Herramientas interactivas de modelado NEXO" loading="lazy" referrerpolicy="same-origin"></iframe>
         </div>

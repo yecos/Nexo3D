@@ -85,7 +85,7 @@ input[type=color] { width: 52px; height: 28px; background: transparent; padding:
 
 /* Hew interactive viewport — native React/Three.js editor runs inside NEXO */
 [hidden] {display:none!important;}
-#app.hew-layout-active .layout {grid-template-columns:0 minmax(0,1fr) 0;}
+#app.hew-layout-active .layout {grid-template-columns:minmax(0,1fr);}
 #app.hew-layout-active .sidebar {display:none;}
 #hew-model-wrap {position:absolute;inset:0;overflow:hidden;background:#181d21;}
 #hew-frame {border:0;position:absolute;top:48px;left:0;width:100%;height:calc(100% - 48px);background:#1b1a17;}
@@ -108,3 +108,18 @@ input[type=color] { width: 52px; height: 28px; background: transparent; padding:
 #render-settings .panel-heading {align-items:center;gap:8px;}
 #render-settings .panel-heading h2 {margin:0;}
 #render-settings input[type=range]:focus-visible, #render-settings select:focus-visible {outline:2px solid #d5b88f;outline-offset:2px;}
+
+/* Model workspace: remain visible even with no Hew build or an incomplete WASM startup. */
+#hew-model-wrap {min-width:0;min-height:0;}
+#hew-toolbar {z-index:4;}
+#hew-loading, #hew-missing {
+  position:absolute;inset:48px 0 0;z-index:3;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;text-align:center;padding:clamp(16px,4vw,46px);
+  background:#1a2025;color:#e7e5de;overflow-y:auto;
+}
+#hew-loading h2, #hew-missing h2 {color:#dec49f;font-size:17px;letter-spacing:.01em;text-transform:none;margin:0;}
+#hew-loading p, #hew-missing p {max-width:650px;margin:0;color:#c0c9ca;}
+#hew-missing code {display:inline-block;padding:9px 13px;border-radius:6px;background:#10181d;
+  color:#e7ccaa;font-size:13px;user-select:all;}
+#hew-missing #hew-retry {background:#c6a77d;color:#151b1f;border-color:#c6a77d;font-weight:700;margin-top:6px;}
