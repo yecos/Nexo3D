@@ -1,0 +1,60 @@
+name: Integrated Hew interactive modeler
+on:
+  push:
+    branches: [feat/hew-interactive-workspace]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hew-gui-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-hew-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test existing CAD/Render and Hew bridge
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Install pinned Rust/WASM and pnpm toolchain
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.97.1 --profile minimal --target wasm32-unknown-unknown
+          corepack enable
+          corepack --version
+      - name: Clone pinned Hew upstream, install wasm-pack 0.15.0
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/hew3d/hew.git upstream-hew
+          git -C upstream-hew checkout f36661fb726253e501ef26a4d5fff3cc6381d814
+          bash upstream-hew/scripts/install-wasm-pack.sh
+          wasm-pack --version
+      - name: Build local interactive Hew editor under NEXO /hew/
+        run: |
+          set -euo pipefail
+          npm run hew:setup
+          test -f public/hew/index.html
+          test -f public/hew/nexo-manifest.json
+          node -e "const x=require('./public/hew/nexo-manifest.json'); if(x.integration!=='nexo-hew'||x.protocol!==1)process.exit(1)"
+          npm run build
+      - name: Ensure NEXO bundle includes the offline modeler
+        run: |
+          set -euo pipefail
+          test -f dist/hew/index.html
+          test -f dist/hew/nexo-manifest.json
+          find dist/hew -name '*.wasm' | grep -q wasm
+          grep -q '/hew/' dist/hew/index.html
+          echo 'PASS: NEXO bundle contains genuine Hew React+WASM editor'
+      - name: Attach testable browser build (not a desktop installer)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexo-hew-interactive-web-build
+          path: dist/
+          retention-days: 7
