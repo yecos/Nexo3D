@@ -1,0 +1,48 @@
+name: Render Studio real browser smoke
+on:
+  push:
+    branches: [feat/render-studio-realtime]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: render-studio-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  chromium-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install app + Playwright only for this visual test
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Unit tests and Vite build
+        run: |
+          npm test
+          npm run build
+      - name: Headless Chromium WebGL test for live render and local project persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run preview -- --port 4175 > /tmp/nexo-render.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            curl -fsS http://127.0.0.1:4175/ > /dev/null && break
+            sleep 1
+          done
+          node tests/e2e/render-studio.mjs
+      - name: Upload screenshot/error evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-studio-chromium
+          path: artifacts/
+          retention-days: 7
+          if-no-files-found: warn
