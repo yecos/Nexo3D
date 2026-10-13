@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#141619">
-  <meta name="description" content="NEXO 3D — primer prototipo abierto de modelado y visualización">
+  <meta name="description" content="NEXO 3D — CAD 2D, modelado y render en un proyecto local">
   <title>NEXO 3D — Prototipo</title>
 </head>
 <body>
@@ -22,32 +22,48 @@
     </header>
     <div class="workspace-bar">
       <nav aria-label="Áreas de trabajo">
-        <button class="workspace active" data-workspace="model" aria-pressed="true">Modelado</button>
+        <button class="workspace active" data-workspace="cad" aria-pressed="true">CAD 2D</button>
+        <button class="workspace" data-workspace="model" aria-pressed="false">Modelado 3D</button>
         <button class="workspace" data-workspace="render" aria-pressed="false">Render</button>
-        <button class="workspace disabled" disabled title="Próxima fase">CAD <span>próximamente</span></button>
         <button class="workspace disabled" disabled title="Próxima fase">IA Studio <span>próximamente</span></button>
       </nav>
-      <div class="workspace-label" id="workspace-label">Transformaciones y geometría</div>
+      <div class="workspace-label" id="workspace-label">Dibujo técnico · metros · capas</div>
     </div>
     <main class="layout">
       <aside class="sidebar left">
-        <section class="panel">
+        <section class="panel" id="scene-panel">
           <div class="panel-heading"><h2>Escena</h2><button id="add-box" aria-label="Añadir cubo" title="Añadir cubo">+ Cubo</button></div>
           <div id="scene-list" class="scene-list"></div>
         </section>
+        <section class="panel" id="cad-layers"></section>
         <section class="panel note">
           <h2>Primer prototipo</h2>
-          <p>Este editor comparte el mismo proyecto entre Modelado y Render. CAD, SKP y DWG todavía no están implementados.</p>
+          <p>Dibuja en CAD, levanta muros vinculados y visualízalos en Modelado y Render. DWG, SKP, cotas avanzadas y BIM siguen pendientes.</p>
           <p>Orbitar: arrastrar · Desplazar: clic derecho · Zoom: rueda.</p>
         </section>
       </aside>
       <section class="viewport-wrap">
-        <div id="viewport" aria-label="Visor tridimensional"></div>
-        <div class="viewport-overlay"><span>VISTA PERSPECTIVA</span><span id="object-count">0 objetos</span></div>
-        <div class="viewport-hint">Arrastra para orbitar. Selecciona un objeto para editarlo.</div>
+        <div id="viewport" aria-label="Visor tridimensional" hidden></div>
+        <div id="cad-surface-wrap">
+          <div id="cad-tools">
+            <div class="cad-tool-row">
+              <button data-cad-tool="select" class="active" title="Seleccionar (V)" aria-pressed="true">Seleccionar</button>
+              <button data-cad-tool="line" title="Línea (L)" aria-pressed="false">Línea</button>
+              <button data-cad-tool="polyline" title="Polilínea (P)" aria-pressed="false">Polilínea</button>
+              <button data-cad-tool="rectangle" title="Rectángulo (R)" aria-pressed="false">Rectángulo</button>
+              <button id="cad-finish" title="Terminar polilínea (Enter)">Terminar</button>
+            </div>
+            <div class="cad-tool-row cad-tool-options"><label><input id="cad-snap" type="checkbox" checked> Snap 0,25 m</label><span>Coordenada X,Y (m):</span><input id="cad-point" aria-label="Coordenada exacta X Y" placeholder="4.00, 3.00"><button id="cad-point-go">Aplicar</button></div>
+          </div>
+          <svg id="cad-surface" tabindex="0" role="img" aria-label="Editor de dibujo CAD 2D"></svg>
+          <div class="cad-hint">Rueda: zoom · Clic derecho / medio: mover plano · Shift: ortogonal · Enter: cerrar polilínea · Esc: cancelar</div>
+        </div>
+        <div class="viewport-overlay" id="viewport-overlay" hidden><span>VISTA PERSPECTIVA</span><span id="object-count">0 objetos</span></div>
+        <div class="viewport-hint" id="viewport-hint" hidden>Arrastra para orbitar. Selecciona un objeto para editarlo.</div>
       </section>
       <aside class="sidebar right">
-        <section class="panel"><h2 id="inspector-title">Propiedades</h2><div id="inspector"></div></section>
+        <section class="panel" id="model-inspector"><h2 id="inspector-title">Propiedades</h2><div id="inspector"></div></section>
+        <section class="panel" id="cad-inspector"><h2>CAD · Geometría</h2><div id="cad-controls"></div></section>
         <section id="render-settings" class="panel render-only" hidden>
           <h2>Escena e iluminación</h2>
           <label for="sun-light">Luz principal</label>

@@ -1,6 +1,6 @@
-# Primer prototipo ejecutable — GLB, Modelado y Render
+# Prototipos NEXO 3D — GLB, CAD, Modelado y Render
 
-**Estado:** implementación en la rama `feat/mvp-local-glb-workspaces`. **No declarado listo para producción** hasta comprobar CI, build y una ejecución manual en Linux/Windows.
+**Estado:** visor GLB en `feat/mvp-local-glb-workspaces` y nuevo módulo CAD en `feat/cad2d-linked-walls`. Son ramas experimentales; todavía no hay instalador. Para la prueba de flujo de arquitectura leer [CAD_2D_MVP.md](CAD_2D_MVP.md).
 
 ## Alcance REAL de este prototipo
 - Visor interactivo con órbita, paneo y zoom; importar archivos **.glb 2.0 autocontenidos**.
@@ -11,13 +11,13 @@
 - Guardar / abrir archivo local `.nexo3d.json` provisional con modelos GLB embebidos y metadatos.
 - Deshacer/rehacer cambios de escena (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z o Ctrl/Cmd+Y).
 - Rechazar proyectos inválidos y GLB que dependan de recursos externos.
-- **No:** CAD, DWG, DXF, SKP, HDRI real, imagen IA, render final offline, Tauri empaquetado o sincronización. Ninguna funcionalidad comercial de D5 se incluye.
+- **No:** importación DWG/DXF/SKP, CAD avanzado (trim/offset/cotas asociativas), HDRI real, IA, render final offline, Tauri empaquetado o sincronización. El módulo CAD inicial de la rama sucesora se documenta aparte.
 
 ## Ejecutar localmente (requiere Node.js 22 o superior)
 ```bash
 git clone https://github.com/yecos/Nexo3D.git
 cd Nexo3D
-git switch feat/mvp-local-glb-workspaces
+git switch feat/cad2d-linked-walls
 npm install
 npm test
 npm run dev

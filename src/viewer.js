@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { base64ToBytes } from './domain.js';
+import { wallSegments } from './cad-domain.js';
 
 export class Viewer {
   constructor(container, onSelect, onTransform) {
@@ -11,6 +12,7 @@ export class Viewer {
     this.onSelect = onSelect;
     this.onTransform = onTransform;
     this.nodes = new Map();
+    this.cadWalls = new Map();
     this.pending = new Set();
     this.latestProject = null;
     this.selectedId = null;
@@ -149,8 +151,50 @@ export class Viewer {
     else this.controls.detach();
   }
 
+  syncCad(project) {
+    // Proyección derivada: NO crea un segundo documento editable en el renderer.
+    const visible = new Map((project.cad?.shapes || [])
+      .filter(s => s.extrusion && project.cad.layers.some(l => l.id === s.layerId && l.visible))
+      .map(s => [s.id, s]));
+    for (const [id, entry] of this.cadWalls) {
+      if (visible.has(id)) continue;
+      this.scene.remove(entry.group);
+      entry.group.traverse(obj => {
+        obj.geometry?.dispose();
+        obj.material?.dispose();
+      });
+      this.cadWalls.delete(id);
+    }
+    for (const [id, shape] of visible) {
+      const layer = project.cad.layers.find(l => l.id === shape.layerId);
+      const signature = JSON.stringify([shape.points,shape.kind,shape.extrusion,layer.color]);
+      if (this.cadWalls.get(id)?.signature === signature) continue;
+      const previous = this.cadWalls.get(id);
+      if (previous) {
+        this.scene.remove(previous.group);
+        previous.group.traverse(obj => { obj.geometry?.dispose(); obj.material?.dispose(); });
+      }
+      const group = new THREE.Group();
+      group.name = 'Muro vinculado · ' + shape.name;
+      for (const segment of wallSegments(shape)) {
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(...segment.size),
+          new THREE.MeshStandardMaterial({ color: layer.color, roughness: 0.87 })
+        );
+        mesh.position.fromArray(segment.center);
+        mesh.rotation.y = segment.rotationY;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+      }
+      this.scene.add(group);
+      this.cadWalls.set(id, { signature, group });
+    }
+  }
+
   async sync(project) {
     this.latestProject = project;
+    this.syncCad(project);
     this.scene.background.set(project.render.background);
     this.ambient.intensity = project.render.ambientIntensity;
     this.sun.intensity = project.render.sunIntensity;

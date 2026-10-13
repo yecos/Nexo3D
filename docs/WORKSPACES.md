@@ -6,7 +6,7 @@
 Menú proyecto; navegador de escena; árbol de objetos; inspector de propiedades; buscador de comandos; barra de estado con unidades/coordenadas; historial undo/redo; panel de assets; vistas/cámaras; ayuda; notificaciones de save/errores. Atajos configurables; no secuestrar teclas usadas por entradas de texto.
 
 ## CAD — tipo dibujo técnico
-**Foco:** precisión 2D y documentación. Primera versión P1.
+**Foco:** precisión 2D y documentación. Existe una primera interfaz experimental en la rama CAD (línea, polilínea, rectángulo, coordenadas, capas, snap y extrusión vinculada); el resto sigue siendo objetivo de producto. Ver [CAD_2D_MVP.md](CAD_2D_MVP.md).
 - Herramientas objetivo: línea, polilínea, rectángulo, arco, círculo, trim/extend, offset, snaps, ortogonal, coordenadas absolutas/relativas.
 - Capas, tipos de línea, visibilidad, bloques, grupos, cotas y anotación por escala.
 - Vistas planta/corte/elevación desde entidades semánticas donde existan; impresión/PDF posterior.

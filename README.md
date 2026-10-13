@@ -4,7 +4,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
 
-> **Estado (2026-10-13): primer prototipo experimental en PR #1.** No hay aplicación de escritorio instalable ni compatibilidad CAD/SKP/DWG. Existe una implementación inicial web-local (Three.js/Vite), compilación y tests de dominio en CI; faltan pruebas manuales Linux/Windows y revisión antes de fusionar.
+> **Estado (2026-10-13): prototipo experimental en PR #1 (visor GLB) y rama sucesora CAD 2D → Muros 3D.** Los tres workspaces comparten el mismo estado local; aún faltan pruebas manuales Windows/Linux, instaladores y la edición CAD avanzada. DXF/DWG/SKP siguen pendientes.
 
 ## La idea
 Una plataforma multiplataforma y **offline-first** con **cuatro espacios de trabajo sobre un único proyecto**:
@@ -28,7 +28,7 @@ El mismo objeto y sus propiedades permanecen sincronizados al cambiar de espacio
 
 ## Prototipo web-local en revisión
 
-Ver [PR #1](https://github.com/yecos/Nexo3D/pull/1) y [guía para ejecutarlo](docs/PROTOTYPE.md). La rama de prototipo incluye visor 3D, importación GLB autocontenida, dos workspaces sincronizados y guardar/abrir JSON local. Aún **no equivale** a un CAD tipo AutoCAD, un modelador completo ni un renderer final tipo D5.
+El primer visor 3D se encuentra en [PR #1](https://github.com/yecos/Nexo3D/pull/1). La continuación añade un editor **CAD 2D con muros vinculados al mismo modelo**, documentado en la [guía CAD → 3D → Render](docs/CAD_2D_MVP.md). Consulta también [la guía del visor GLB](docs/PROTOTYPE.md). La rama de prototipo incluye visor 3D, importación GLB autocontenida, dos workspaces sincronizados y guardar/abrir JSON local. Aún **no equivale** a un CAD tipo AutoCAD, un modelador completo ni un renderer final tipo D5.
 
 ## Primera meta (MVP)
 1. Importar un modelo GLB.
