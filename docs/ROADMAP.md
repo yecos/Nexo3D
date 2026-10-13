@@ -1,6 +1,6 @@
 # Hoja de ruta basada en evidencias
 
-**Estado a 2026-10-13:** documentación en main y prototipo Vite/Three.js **en revisión como PR #1**. Hay build web experimental en CI, **sin instalador desktop y sin verificación manual Linux/Windows**. No fijar fechas de entrega antes de estimar capacidad.
+**Estado a 2026-10-13:** documentación en main; visor GLB en PR #1 y CAD 2D + muros vinculados en la rama sucesora experimental. Hay CI de dominio y compilación; **sin instalador desktop ni prueba manual completa en Windows/Linux**. No fijar fechas de entrega antes de estimar capacidad.
 
 ## Resumen de hitos
 | Hito | Resultado demostrable | Dependencias |
@@ -45,6 +45,7 @@
 **Salida:** prueba de extremo a extremo AC-MVP-01/02/03 en dos sistemas.
 
 ## M3: CAD/arquitectura
+**Primer incremento en revisión:** líneas, polilíneas, rectángulos, capas, snap, coordenadas métricas y conversión explícita a muros enlazados; ver [CAD_2D_MVP](CAD_2D_MVP.md). No confundir estas herramientas iniciales con AutoCAD completo, planos constructivos listos ni BIM.
 - [ ] Sketch 2D: líneas, polilíneas, arco, snap, capas.
 - [ ] Reglas de unidades, tolerancias y cotas.
 - [ ] Decisión de motor paramétrico y entidades semánticas.

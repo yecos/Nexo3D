@@ -19,6 +19,7 @@
 | 10 | [Evaluación de motores](ENGINE_EVALUATION.md) | Rúbrica Hew/IngeTrazo y demás |
 | 11 | [Roadmap](ROADMAP.md) | M0–M6, criterios de salida |
 | 12 | [Guía para construir MVP](MVP_IMPLEMENTATION.md) | Tickets técnicos en orden |
+| 12a | [CAD 2D → 3D → Render](CAD_2D_MVP.md) | Prueba exacta de habitación 4×3 m y muro vinculado |
 | 13 | [Estrategia de pruebas](TEST_STRATEGY.md) | Fixtures, tests, plataforma, evidencia |
 | 14 | [Desarrollo](DEVELOPMENT.md) | Convenciones y primer bootstrap |
 | 15 | [Licencias y activos](LICENSING.md) | AGPL, marcas, terceros y copyright |
