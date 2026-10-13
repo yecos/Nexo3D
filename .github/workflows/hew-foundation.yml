@@ -1,0 +1,68 @@
+name: NEXO CAD-to-Hew foundation adapter
+on:
+  push:
+    branches: [feat/hew-foundation-adapter]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nexo-hew-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cad-to-hew:
+    name: CAD document to Hew solids (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test CAD adapter and build existing NEXO prototype
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Fetch unmodified official Hew at pinned SHA
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/hew3d/hew.git upstream-hew
+          git -C upstream-hew checkout f36661fb726253e501ef26a4d5fff3cc6381d814
+          git -C upstream-hew rev-parse HEAD
+      - name: Build Hew official CLI
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.97.1 --profile minimal
+          cd upstream-hew
+          cargo build --locked -p hew-cli
+      - name: Install Blender renderer on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y blender python3-numpy
+      - name: Process actual NEXO 2D room using Hew and Blender when available
+        run: |
+          set -euo pipefail
+          hew_bin="$(node -p "require('path').resolve('upstream-hew/target/debug/hew-cli'+(process.platform==='win32'?'.exe':''))")"
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            node scripts/build-with-hew.mjs examples/room-4x3.nexo3d.json artifacts "$hew_bin" "$(which blender)"
+          else
+            node scripts/build-with-hew.mjs examples/room-4x3.nexo3d.json artifacts "$hew_bin"
+          fi
+          node scripts/verify-bridge.mjs artifacts
+      - name: Preserve models, traceability and final render
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cad-hew-${{ runner.os }}
+          path: artifacts/
+          retention-days: 7
+          if-no-files-found: warn
