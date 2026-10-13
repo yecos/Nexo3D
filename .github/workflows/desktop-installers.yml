@@ -1,0 +1,154 @@
+name: NEXO Desktop installers (Windows and Linux)
+on:
+  push:
+    branches: [feat/desktop-tauri-alpha]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: nexo-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-hew-web:
+    name: Build pinned Hew WebAssembly editor
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test NEXO bridge before packaging
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+          node scripts/check-desktop-config.mjs
+      - name: Install pinned Rust/WASM and pnpm toolchain
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.97.1 --profile minimal --target wasm32-unknown-unknown
+          corepack enable
+      - name: Clone pinned Hew upstream and build the embedded editor
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/hew3d/hew.git upstream-hew
+          git -C upstream-hew checkout f36661fb726253e501ef26a4d5fff3cc6381d814
+          bash upstream-hew/scripts/install-wasm-pack.sh
+          npm run hew:setup
+          test -f public/hew/index.html
+          test -f public/hew/nexo-manifest.json
+          find public/hew -name '*.wasm' | grep -q .wasm
+          npm run build
+          test -f dist/hew/index.html
+          test -f dist/hew/nexo-manifest.json
+          grep -q '/hew/' dist/hew/index.html
+      - name: Share the same-commit Hew bundle with desktop jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexo-hew-interactive-web-build
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
+
+  desktop-windows:
+    name: Windows NSIS setup EXE
+    needs: build-hew-web
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+      - name: Recover the same-commit Hew WASM editor build
+        uses: actions/download-artifact@v4
+        with:
+          name: nexo-hew-interactive-web-build
+          path: hew-build
+      - name: Build current NEXO web app + included Hew editor
+        shell: pwsh
+        run: |
+          if (!(Test-Path "hew-build/hew/nexo-manifest.json")) {
+            throw "Missing Hew editor in archived build; cannot ship empty Modelado 3D."
+          }
+          New-Item -ItemType Directory -Path "public/hew" -Force | Out-Null
+          Copy-Item "hew-build/hew/*" "public/hew/" -Recurse -Force
+          $manifest = Get-Content "public/hew/nexo-manifest.json" -Raw | ConvertFrom-Json
+          if ($manifest.integration -ne "nexo-hew") {throw "Bad Hew integration manifest"}
+          $wasm = Get-ChildItem "public/hew" -Recurse -Filter "*.wasm"
+          if ($wasm.Count -lt 1) {throw "No Hew Rust/WASM engine found"}
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+          if (!(Test-Path "dist/hew/index.html")) {throw "Hew editor absent from desktop bundle"}
+          npm run desktop:icons
+      - name: Produce actual Windows desktop installer
+        shell: pwsh
+        run: |
+          npx tauri build --bundles nsis
+          $setup = Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe" -ErrorAction Stop
+          if (!$setup) { throw "NSIS installer not found" }
+          $setup | ForEach-Object { Write-Host "WINDOWS INSTALLER:" $_.FullName "Size:" $_.Length }
+      - name: Archive runnable installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXO-3D-Windows-Alpha-Setup
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          retention-days: 14
+          if-no-files-found: error
+
+  desktop-linux:
+    name: Linux AppImage
+    needs: build-hew-web
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+      - name: Install Linux Tauri dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+      - name: Reuse validated Hew WebAssembly asset
+        uses: actions/download-artifact@v4
+        with:
+          name: nexo-hew-interactive-web-build
+          path: hew-build
+      - name: Build frontend with bundled Hew, test, generate icons
+        run: |
+          set -euo pipefail
+          test -f hew-build/hew/nexo-manifest.json
+          mkdir -p public/hew
+          cp -a hew-build/hew/. public/hew/
+          find public/hew -name '*.wasm' | grep -q .wasm
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+          test -f dist/hew/index.html
+          npm run desktop:icons
+      - name: Package offline Linux AppImage
+        run: |
+          npx tauri build --bundles appimage
+          find src-tauri/target/release/bundle/appimage -name '*.AppImage' -size +1M
+      - name: Archive AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXO-3D-Linux-Alpha-AppImage
+          path: src-tauri/target/release/bundle/appimage/*.AppImage
+          retention-days: 14
+          if-no-files-found: error
+

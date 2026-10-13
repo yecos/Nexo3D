@@ -1,0 +1,68 @@
+name: Publish tested Desktop Alpha release
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Successful desktop-installers.yml run number"
+        required: true
+        type: string
+      tag:
+        description: "New immutable version tag, e.g. desktop-v0.1.0-alpha.1"
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify an explicit, successful, matching commit build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ inputs.run_id }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo 'Invalid run number'; exit 1; }
+          [[ "$TAG" =~ ^desktop-v[0-9]+\.[0-9]+\.[0-9]+(-alpha\.[0-9]+)?$ ]] || { echo 'Invalid release tag'; exit 1; }
+          if gh release view "$TAG" >/dev/null 2>&1; then echo 'Tag/release already exists'; exit 1; fi
+          status=$(gh api repos/"$GITHUB_REPOSITORY"/actions/runs/"$RUN_ID" --jq '.conclusion')
+          workflow=$(gh api repos/"$GITHUB_REPOSITORY"/actions/runs/"$RUN_ID" --jq '.name')
+          commit=$(gh api repos/"$GITHUB_REPOSITORY"/actions/runs/"$RUN_ID" --jq '.head_sha')
+          branch=$(gh api repos/"$GITHUB_REPOSITORY"/actions/runs/"$RUN_ID" --jq '.head_branch')
+          [[ "$status" == 'success' && "$workflow" == 'NEXO Desktop installers (Windows and Linux)' ]] ||
+             { echo "Build not validated: $status/$workflow"; exit 1; }
+          [[ "$branch" == 'feat/desktop-tauri-alpha' ]] || { echo "Unexpected build branch"; exit 1; }
+          echo "BUILD_SHA=$commit" >> "$GITHUB_ENV"
+          echo "Verified build $RUN_ID from commit $commit"
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.run_id }}
+          repository: yecos/Nexo3D
+          name: NEXO-3D-Windows-Alpha-Setup
+          path: release-windows
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.run_id }}
+          repository: yecos/Nexo3D
+          name: NEXO-3D-Linux-Alpha-AppImage
+          path: release-linux
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create draft prerelease for human approval
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          compgen -G 'release-windows/*-setup.exe' >/dev/null || { echo 'NSIS file absent'; exit 1; }
+          compgen -G 'release-linux/*.AppImage' >/dev/null || { echo 'AppImage absent'; exit 1; }
+          gh release create "$TAG" --target "$BUILD_SHA" --draft --prerelease \
+            --title "NEXO 3D Alpha: $TAG" \
+            --notes "Instaladores de prueba. Modelo Hew incluido. Antes de instalar, guarda una copia de tus proyectos. Actualizaciones automáticas firmadas aún no están activadas. Windows SmartScreen puede advertir porque el instalador beta no tiene certificado de firma de código." \
+            release-windows/*-setup.exe release-linux/*.AppImage
+          echo 'Draft release created. Review and publish it manually.'
