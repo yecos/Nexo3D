@@ -55,3 +55,6 @@ Fase siguiente (**NO activa en esta beta**): actualizador Tauri v2 con firma Ed2
 - [ ] Render usable con una escena GLB real.
 - [ ] Añadir actualizaciones firmadas con respaldo de claves y release tags inmutables.
 - [ ] Política de migraciones/backup y revisión de licencias/atribuciones y CSP.
+## Diagnóstico de Hew en WebView2
+
+La beta alpha.2 inicia el iframe Hew con navegación eager y mantiene el documento visible durante el arranque. Esto evita que WebView2 difiera un iframe oculto y deje el motor WebAssembly sin emitir `nexo:hew.ready`. Las rutas se resuelven desde la base del documento para cubrir Vite y el protocolo local `tauri.localhost`. El workflow de instaladores construye el Hew WASM fijado en la misma ejecución y comparte ese artefacto con Windows y Linux; no depende de un `run-id` histórico.
