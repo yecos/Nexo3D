@@ -7,6 +7,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: foundations-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   hew-headless:
     name: Hew CLI and kernel (${{ matrix.os }})
@@ -23,6 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Checkout pinned Hew
         run: |
+          set -euo pipefail
           git clone --filter=blob:none https://github.com/hew3d/hew.git upstream-hew
           git -C upstream-hew checkout f36661fb726253e501ef26a4d5fff3cc6381d814
           git -C upstream-hew rev-parse HEAD
@@ -38,6 +42,7 @@ jobs:
           cargo test --locked -p kernel --lib
       - name: Hew CLI creates and exports architectural solid
         run: |
+          set -euo pipefail
           mkdir -p artifacts
           cd upstream-hew
           cargo run --locked -p hew-cli -- run ../tests/upstreams/hew_wall.json --out ../artifacts/wall.hew | tee ../artifacts/hew-api-replies.jsonl
@@ -70,9 +75,19 @@ jobs:
           git clone --filter=blob:none https://github.com/ingelibre/ingecad.git upstream-ingecad
           git -C upstream-ingecad checkout 27cfce77340cec5c418032c13986a462b492da3a
           git -C upstream-ingecad rev-parse HEAD
+      - name: Install Linux GUI runtime libraries and optional LibreDWG
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0
+          if apt-cache show libredwg-tools >/dev/null 2>&1; then
+            sudo apt-get install -y libredwg-tools
+          else
+            echo "LibreDWG converters unavailable in runner apt catalog"
+          fi
       - name: Install Qt/CAD requirements
         run: |
           python -m pip install -r upstream-ingecad/requirements.txt
+          python -m pip install 'PySide6>=6.7,<6.12'
       - name: Report DWG converter availability
         run: |
           if command -v dwg2dxf >/dev/null && command -v dxf2dwg >/dev/null; then
@@ -84,6 +99,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
+          set -euo pipefail
           cd upstream-ingecad
           python -m pytest -q tests/test_dimension.py tests/test_drafting.py tests/test_dwg_bridge.py | tee ../ingecad-tests.log
       - name: Upload logs
@@ -115,6 +131,7 @@ jobs:
           blender --version | head -n 2
       - name: Import Hew GLB and render Cycles PNG
         run: |
+          set -euo pipefail
           blender --background --factory-startup --threads 2 --python tests/upstreams/render_blender.py -- artifacts/wall.glb artifacts/hew-cycles.png | tee artifacts/blender.log
           python tests/upstreams/check_png.py artifacts/hew-cycles.png
       - name: Upload rendered image and logs
