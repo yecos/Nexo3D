@@ -78,3 +78,11 @@ test('CAD: no acepta entidades malformadas ni parámetros peligrosos', () => {
   cad.shapes.push({...cad.shapes[0]});
   assert.throws(()=>validateCad(cad),/repetido|inválido/);
 });
+
+test('CAD: previene degeneración de rectángulos y segmentos consecutivos', () => {
+  const layer='layer-architecture';
+  assert.throws(() => createCadShape('rectangle',
+    rectanglePoints([0,0],[4,0]),layer,'flat'),/inválido/);
+  assert.throws(() => createCadShape('polyline',
+    [[0,0],[1,0],[1,0]],layer,'repeat'),/inválido/);
+});
