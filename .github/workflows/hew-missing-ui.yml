@@ -1,0 +1,45 @@
+name: Missing Hew UI regression
+on:
+  push:
+    branches: [fix/hew-model-workspace-blank]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ui-fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install app and browser test runner
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run app unit tests and production build
+        run: |
+          npm test
+          npm run build
+      - name: Verify missing Hew UI in real Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -- --port 4181 > /tmp/nexo-missing-hew.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:4181/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node tests/e2e/hew-missing-ui.mjs
+      - name: Upload real screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: modeling-fallback-chromium
+          path: artifacts/
+          retention-days: 7
+          if-no-files-found: warn
