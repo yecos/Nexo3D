@@ -1,0 +1,55 @@
+name: NEXO native CAD and modeling PoC
+
+on:
+  push:
+    branches:
+      - spike/ingecad-ingetrazo-native-shell
+    paths:
+      - 'experiments/qt-unified-shell/**'
+      - '.github/workflows/native-cad-modeling-poc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Contract tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Python syntax and unit tests
+        run: |
+          python -m compileall -q experiments/qt-unified-shell
+          python -m unittest discover -s experiments/qt-unified-shell -p 'test_*.py' -v
+
+  package-windows:
+    name: Windows PoC executable
+    runs-on: windows-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install build dependencies
+        run: python -m pip install --disable-pip-version-check PySide6==6.9.3 pyinstaller==6.16.0
+      - name: Validate source
+        run: |
+          python -m compileall -q experiments/qt-unified-shell
+          python -m unittest discover -s experiments/qt-unified-shell -p "test_*.py" -v
+      - name: Package PoC shell (editors not bundled)
+        shell: pwsh
+        run: |
+          cd experiments/qt-unified-shell
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name NEXO-CAD-Modelado-PoC nexo_shell.py
+          if (!(Test-Path dist/NEXO-CAD-Modelado-PoC.exe)) { throw "Missing PoC executable" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NEXO-Native-CAD-Modelado-Windows-PoC
+          path: experiments/qt-unified-shell/dist/NEXO-CAD-Modelado-PoC.exe
+          retention-days: 14
+          if-no-files-found: error
