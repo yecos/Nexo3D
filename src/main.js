@@ -251,13 +251,15 @@ el('model-file').addEventListener('change', async event => {
   } catch (e) { status(e.message, true); }
   finally { event.target.value = ''; }
 });
-el('new-project').addEventListener('click', () => {
+el('new-project').addEventListener('click', async () => {
   if (!confirm('¿Crear un proyecto nuevo? Guarda el actual antes de continuar.')) return;
-  project = makeProject(); selectedId = project.nodes[0].id;
-  undo.length = 0; redo.length = 0;
-  hew.generatedIds = [];
-  el('hew-frame').src && (el('hew-frame').src = '/hew/index.html');
-  refresh(); status('Nuevo proyecto local preparado.');
+  const fresh=makeProject();
+  try {
+    await hew.loadProject(fresh); // Reset the real Hew document before switching.
+    project=fresh;selectedId=project.nodes[0].id;
+    undo.length=0;redo.length=0;
+    refresh();status('Nuevo proyecto CAD + Hew preparado.');
+  } catch(error){status('No se pudo iniciar la escena Hew: '+error.message,true);}
 });
 el('open-project').addEventListener('click', () => el('project-file').click());
 el('project-file').addEventListener('change', async event => {
@@ -266,23 +268,36 @@ el('project-file').addEventListener('change', async event => {
   try {
     if (file.size > MAX_PROJECT_BYTES) throw new Error('El proyecto excede 70 MB.');
     const parsed = parseProject(await file.text());
+    await hew.loadProject(parsed); // Refuse to switch if native document is invalid.
     project = parsed; selectedId = project.nodes[0]?.id ?? null;
     undo.length = 0; redo.length = 0;
-    hew.generatedIds = [];
-    if (hew.ready) el('hew-frame').src = '/hew/index.html';
-    refresh(); status('Proyecto abierto desde disco, sin nube.');
+    refresh(); status(parsed.hew ?
+      'Proyecto CAD + Hew editable recuperado desde un único archivo.' :
+      'Proyecto antiguo migrado; modelo Hew vacío.');
   } catch (e) { status('No se pudo abrir el archivo: ' + e.message, true); }
   finally { event.target.value = ''; }
 });
-el('save-project').addEventListener('click', () => {
+el('save-project').addEventListener('click', async () => {
+  const button=el('save-project');
+  if(button.disabled)return;
+  button.disabled=true;
+  const source=project;
   try {
-    const content = saveProject(project);
-    const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = 'nexo3d-proyecto.nexo3d.json'; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    status('Proyecto descargado. Conserva el archivo en un lugar seguro.');
-  } catch (e) { status('Error al guardar: ' + e.message, true); }
+    status('Guardando CAD, geometría editable Hew y vista Render en un solo proyecto…');
+    const snapshot=await hew.captureProject(source);
+    if(project!==source)throw Error('El proyecto cambió durante el guardado. Repite Guardar.');
+    const content=saveProject(snapshot);
+    project=snapshot; // Keep the captured Hew binary for subsequent offline saves.
+    const url=URL.createObjectURL(new Blob([content],{type:'application/json'}));
+    const a=document.createElement('a');
+    a.href=url;a.download='nexo3d-proyecto.nexo3d.json';a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    status(snapshot.hew ?
+      'Proyecto único guardado: CAD + Hew editable + Render.' :
+      'Proyecto guardado; Hew no estaba iniciado y no había modelo editable.');
+  }catch(error){
+    status('No se descargó el proyecto: '+error.message,true);
+  }finally{button.disabled=false;}
 });
 for (const [id, field] of [['sun-light', 'sunIntensity'], ['ambient-light', 'ambientIntensity'],
   ['background-color', 'background']]) {
