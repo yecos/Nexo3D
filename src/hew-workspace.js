@@ -158,8 +158,12 @@ export class HewWorkspace {
     return manifest;
   }
   async updateRender(){
+    // A pending native project must be loaded before its mesh is exported.
+    // Otherwise fast workspace switching can overwrite Render with a stale scene.
+    if (this.loading) await this.loading;
+    if (this.pendingProject) await this.loadProject(this.pendingProject);
     const glb=await this.request('nexo:hew.export',null,null);
-    this.onPreview(glb);
+    this.onPreview(glb); // Preview validation errors must propagate to the caller.
     this.onStatus('Modelo Hew exportado localmente a Render. CAD sigue siendo la fuente del plano.');
     return glb;
   }

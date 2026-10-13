@@ -76,7 +76,10 @@ const hew = new HewWorkspace(el('hew-frame'), () => project, buffer => {
     next.nodes.at(-1).source = 'hew-interactive';
     remember();
     changed(next, 'Render actualizado desde las herramientas de Hew. Guarda el proyecto NEXO.');
-  } catch (error) { status('Error de GLB desde Hew: ' + error.message, true); }
+  } catch (error) {
+    status('Error de GLB desde Hew: ' + error.message, true);
+    throw error; // Do not report a successful automatic refresh when preview validation failed.
+  }
 }, (text, error = false) => {
   el('hew-state').textContent = text;
   status(text, error);
@@ -178,11 +181,26 @@ el('scene-list').addEventListener('click', event => {
   refresh();
 });
 document.querySelectorAll('[data-workspace]').forEach(button => {
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
+    const from = workspace;
     workspace = button.dataset.workspace;
     refresh();
+    if (from === 'model' && workspace === 'render') {
+      if (!hew.ready) {
+        status('Render muestra la última vista disponible: Hew aún no está listo para actualizarla.', true);
+        return;
+      }
+      status('Actualizando automáticamente el modelo de Hew en Render…');
+      try {
+        await hew.updateRender();
+      } catch (error) {
+        // Keep existing Render assets intact when export/validation fails.
+        status('Render conserva la última vista: no se pudo actualizar Hew. ' + error.message, true);
+      }
+      return;
+    }
     status('Espacio ' + ({cad:'CAD 2D',model:'Modelado Hew',render:'Render'}[workspace]) +
-      ' activo. Para reflejar cambios de Hew en Render pulsa Actualizar Render.');
+      ' activo. Los cambios de CAD requieren enviarse a Hew antes de aparecer en Render.');
   });
 });
 el('hew-send-cad').addEventListener('click', async () => {

@@ -32,7 +32,8 @@ Es **un único archivo autocontenido** que se puede copiar o guardar sin una cue
 ### Semántica y límites de esta versión
 - La fuente del plano CAD sigue siendo la sección `cad` y la geometría editable de Hew es la sección `hew`; son documentos almacenados juntos, **pero aún no una geometría semántica bidireccional**.
 - El envío de CAD hacia Hew es **explícito**; regenerar un muro enviado puede reemplazar modificaciones directas a ese muro (confirmación visible). Los identificadores se guardan para localizarlo después de reabrir.
-- El botón **Actualizar Render** también es explícito: el último GLB enviado se conserva en el archivo, pero puede no reflejar las últimas modificaciones de Hew si no se actualiza.
+- En la rama sucesora `feat/seamless-render-handoff`, pasar de **Modelado** a **Render** actualiza automáticamente el GLB desde el editor Hew, evitando el botón manual en el flujo habitual. Si la exportación falla o Hew aún está iniciando, NEXO conserva el último Render y muestra la advertencia; no borra los datos anteriores. El botón **Actualizar Render** sigue disponible.
+- La actualización se realiza al cambiar de espacio, **no continuamente mientras se edita**, y no equivale a EEVEE/D5. Los cambios de CAD aún requieren enviarse explícitamente a Hew; las modificaciones geométricas hechas en Hew todavía no reescriben el plano CAD.
 - Una ZIP `.hew` con cabecera válida pasa la validación básica del contenedor NEXO; **la validez interna del modelo se comprueba cargándola realmente en el kernel Hew**.
 - No hay todavía autosave, backup atómico, DWG nativo, editor Tauri empaquetado, edición de cotas asociativas ni calidad de render D5.
 - **No sobrescribir** copias de clientes sin backup: esta fase genera descargas nuevas y depende de que el usuario conserve el archivo descargado.

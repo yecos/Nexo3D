@@ -44,8 +44,10 @@ try{
   await page.locator('#hew-state').filter({hasText:/Hew listo|Escena Hew limpiada|Modelo Hew editable recuperado/}).waitFor({timeout:120000});
   await page.locator('#hew-send-cad').click();
   await page.locator('#hew-state').filter({hasText:/Plano CAD enviado a Hew: 4 muros/}).waitFor({timeout:90000});
-  await page.locator('#hew-to-render').click();
+  // Modelado -> Render should refresh the current Hew geometry without a manual export button.
+  await page.locator('[data-workspace="render"]').click();
   await page.locator('#hew-state').filter({hasText:/Modelo Hew exportado localmente/}).waitFor({timeout:90000});
+  assert.equal(await page.locator('[data-workspace="render"]').getAttribute('aria-pressed'),'true');
   const saved=await save();
   console.log('SAVE 1:',saved.project.name, 'HEW ZIP bytes=',Buffer.from(saved.project.hew.data,'base64').length);
   page.once('dialog',dialog=>dialog.accept());
