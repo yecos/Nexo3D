@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+import {buildHewCommands} from './hew-adapter.js';
+
+export class HewWorkspace {
+  constructor(frame, getProject, onPreview, onStatus) {
+    this.frame=frame;
+    this.getProject=getProject;
+    this.onPreview=onPreview;
+    this.onStatus=onStatus;
+    this.ready=false;
+    this.bootId=null;
+    this.generatedIds=[];
+    this.nextId=0;
+    this.pending=new Map();
+    this.origin=window.location.origin;
+    this.onMessage=this.onMessage.bind(this);
+    window.addEventListener('message',this.onMessage);
+    frame.addEventListener('load',()=>this.ping());
+  }
+  async init(){
+    if (this.started) return this.started;
+    this.started=(async()=>{
+      const response=await fetch('/hew/nexo-manifest.json',{cache:'no-store'});
+      if(!response.ok)throw Error('No se ha compilado el editor Hew local. Ejecuta npm run hew:setup.');
+      const manifest=await response.json();
+      if(manifest.integration!=='nexo-hew' || manifest.protocol!==1)
+        throw Error('Esta compilación de Hew no contiene el enlace NEXO.');
+      this.frame.src='/hew/index.html';
+      this.onStatus('Iniciando el modelador Hew (WebAssembly local)…');
+      return manifest;
+    })().catch(error=>{
+      this.started=null;
+      this.onStatus(error.message,true);
+      throw error;
+    });
+    return this.started;
+  }
+  ping(){
+    this.frame.contentWindow?.postMessage({type:'nexo:hew.ping'},this.origin);
+  }
+  onMessage(event){
+    if(event.origin!==this.origin || event.source!==this.frame.contentWindow)return;
+    const data=event.data;
+    if(!data || typeof data!=='object')return;
+    if(data.type==='nexo:hew.ready' && data.version===1){
+      if(data.session!==this.bootId){
+        this.generatedIds=[];
+        for(const {reject,timeout} of this.pending.values()){
+          clearTimeout(timeout);reject(Error('Hew se ha reiniciado; vuelve a ejecutar la operación.'));
+        }
+        this.pending.clear();
+        this.bootId=data.session;
+      }
+      this.ready=true;
+      this.onStatus('Hew listo. Puedes usar Push/Pull, componentes y herramientas del modelador.');
+      return;
+    }
+    if(!Number.isSafeInteger(data.id))return;
+    const call=this.pending.get(data.id);
+    if(!call)return;
+    this.pending.delete(data.id);
+    clearTimeout(call.timeout);
+    if(data.type==='nexo:hew.glb'){
+      if(!(data.data instanceof ArrayBuffer))call.reject(Error('Hew no devolvió un GLB binario.'));
+      else call.resolve(data.data);
+    } else if(data.type==='nexo:hew.reply'){
+      if(data.error||data.result?.error){
+        call.reject(Error(String(data.error||data.result.error.message||'La operación fue rechazada por Hew.')));
+      } else call.resolve(data.result?.result);
+    }
+  }
+  request(type, method, params){
+    if(!this.ready || !this.frame.contentWindow)
+      return Promise.reject(Error('El modelador Hew aún no está listo.'));
+    const id=++this.nextId;
+    return new Promise((resolve,reject)=>{
+      const timeout=setTimeout(()=>{
+        this.pending.delete(id);
+        reject(Error('Hew tardó demasiado en responder.'));
+      },60000);
+      this.pending.set(id,{resolve,reject,timeout});
+      this.frame.contentWindow.postMessage({type,id,method,params},this.origin);
+    });
+  }
+  async syncCad(){
+    const {script,manifest}=buildHewCommands(this.getProject());
+    const replace=this.generatedIds.map(id=>({
+      method:'hew.entity.delete',params:{id}
+    }));
+    const commands=[...replace,...script[2].params.commands];
+    if(commands.length>2600)throw Error('Demasiadas operaciones para esta versión del puente Hew.');
+    const result=await this.request('nexo:hew.command','hew.doc.transact',{
+      label:'NEXO CAD sincronizado · '+manifest.sourceProjectName,
+      commands
+    });
+    if(!Array.isArray(result?.results) || result.results.length!==commands.length)
+      throw Error('Hew no confirmó todas las operaciones.');
+    const ids=[];
+    for(let i=0;i<script[2].params.commands.length;i++){
+      const op=script[2].params.commands[i],reply=result.results[i+replace.length];
+      if(op.as?.startsWith('wall')){
+        if(typeof reply?.object_id!=='string')throw Error('Hew no devolvió ID para '+op.as);
+        ids.push(reply.object_id);
+        const item=manifest.objects.find(o=>o.hewResultAlias===op.as);
+        if(item){item.hewObjectId=reply.object_id;item.status='generated';}
+      }
+    }
+    this.generatedIds=ids;
+    this.lastManifest=manifest;
+    this.onStatus('Plano CAD enviado a Hew: '+ids.length+' muros. Edita ahora en Modelado.');
+    return manifest;
+  }
+  async updateRender(){
+    const glb=await this.request('nexo:hew.export',null,null);
+    this.onPreview(glb);
+    this.onStatus('Modelo Hew exportado localmente a Render. CAD sigue siendo la fuente del plano.');
+    return glb;
+  }
+  dispose(){
+    window.removeEventListener('message',this.onMessage);
+    for(const {reject,timeout} of this.pending.values()){
+      clearTimeout(timeout);reject(Error('Editor Hew cerrado.'));
+    }
+    this.pending.clear();
+  }
+}
