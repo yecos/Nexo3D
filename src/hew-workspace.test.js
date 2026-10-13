@@ -26,7 +26,7 @@ function mock(){
         messages.push(data);
         if(data.type==='nexo:hew.command'){
           const result={results:data.params.commands.map((command,i)=>
-            command.as?.startsWith('wall') ? {object_id:'obj-'+messages.length+'-'+i} : {})};
+            command.as?.startsWith('wall') ? {object_id:'obj_'+messages.length+'_'+i} : {})};
           listeners.get('message')({
             origin,source:frame.contentWindow,
             data:{type:'nexo:hew.reply',id:data.id,result:{result}}
