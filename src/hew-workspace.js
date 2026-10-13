@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {buildHewCommands} from './hew-adapter.js';
+import {getHewDocument, withHewDocument} from './domain.js';
 
 export class HewWorkspace {
   constructor(frame, getProject, onPreview, onStatus) {
@@ -12,6 +13,8 @@ export class HewWorkspace {
     this.generatedIds=[];
     this.nextId=0;
     this.pending=new Map();
+    this.pendingProject=null;
+    this.loading=null;
     this.origin=window.location.origin;
     this.onMessage=this.onMessage.bind(this);
     window.addEventListener('message',this.onMessage);
@@ -53,6 +56,11 @@ export class HewWorkspace {
       }
       this.ready=true;
       this.onStatus('Hew listo. Puedes usar Push/Pull, componentes y herramientas del modelador.');
+      if (this.pendingProject && !this.loading) {
+        const pending=this.pendingProject;
+        void this.loadProject(pending).catch(e =>
+          this.onStatus('No se restauró el proyecto Hew: '+e.message,true));
+      }
       return;
     }
     if(!Number.isSafeInteger(data.id))return;
@@ -60,7 +68,7 @@ export class HewWorkspace {
     if(!call)return;
     this.pending.delete(data.id);
     clearTimeout(call.timeout);
-    if(data.type==='nexo:hew.glb'){
+    if(data.type==='nexo:hew.glb' || data.type==='nexo:hew.native'){
       if(!(data.data instanceof ArrayBuffer))call.reject(Error('Hew no devolvió un GLB binario.'));
       else call.resolve(data.data);
     } else if(data.type==='nexo:hew.reply'){
@@ -69,7 +77,7 @@ export class HewWorkspace {
       } else call.resolve(data.result?.result);
     }
   }
-  request(type, method, params){
+  request(type, method, params, data = undefined){
     if(!this.ready || !this.frame.contentWindow)
       return Promise.reject(Error('El modelador Hew aún no está listo.'));
     const id=++this.nextId;
@@ -79,9 +87,46 @@ export class HewWorkspace {
         reject(Error('Hew tardó demasiado en responder.'));
       },60000);
       this.pending.set(id,{resolve,reject,timeout});
-      this.frame.contentWindow.postMessage({type,id,method,params},this.origin);
+      const message={type,id,method,params};
+      if (data !== undefined) message.data=data;
+      this.frame.contentWindow.postMessage(message,this.origin);
     });
   }
+  /** Restore the editable Hew document (or a blank one) before exposing a new NEXO project. */
+  async loadProject(project){
+    if (!this.ready) {
+      this.pendingProject=project;
+      return false;
+    }
+    if (this.loading) await this.loading;
+    this.pendingProject=project;
+    const binary=getHewDocument(project);
+    const task=(async()=>{
+      const result=await this.request('nexo:hew.load',null,null,binary);
+      if (!result?.loaded)throw Error('Hew no confirmó la restauración.');
+      this.generatedIds=[...(project.hew?.generatedIds || [])];
+      this.lastManifest=null;
+      this.pendingProject=null;
+      this.onStatus(binary ?
+        'Modelo Hew editable recuperado dentro del proyecto NEXO.' :
+        'Escena Hew limpiada para el nuevo proyecto.');
+      return true;
+    })();
+    this.loading=task;
+    try { return await task; }
+    finally {if(this.loading===task)this.loading=null;}
+  }
+
+  /** Atomically capture the current, editable Hew WASM document for JSON v3. */
+  async captureProject(project){
+    if (!this.ready) return project; // preserved previous .hew blob survives unchanged
+    if (this.loading)await this.loading;
+    if (this.pendingProject)await this.loadProject(this.pendingProject);
+    const buffer=await this.request('nexo:hew.save',null,null);
+    if (!(buffer instanceof ArrayBuffer))throw Error('No llegaron bytes nativos desde Hew.');
+    return withHewDocument(project,buffer,this.generatedIds);
+  }
+
   async syncCad(){
     const {script,manifest}=buildHewCommands(this.getProject());
     const replace=this.generatedIds.map(id=>({
@@ -122,5 +167,7 @@ export class HewWorkspace {
       clearTimeout(timeout);reject(Error('Editor Hew cerrado.'));
     }
     this.pending.clear();
+    this.pendingProject=null;
+    this.loading=null;
   }
 }
