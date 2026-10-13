@@ -4,6 +4,8 @@
 
 > **Convención de estados:** **DECIDIDO** (regla de producto), **PROPUESTO** (diseño sin PoC), **EN EVALUACIÓN** (tecnología por validar), **IMPLEMENTADO** (código probado y reproducible). Un enlace a repositorio ajeno no es una integración.
 
+**Auditoría técnica:** [Análisis de proyectos y licencias](AUDIT_OPEN_SOURCE.md) · [Prueba de reutilización Hew](REUSE_POC.md) · [ADR-0005 (propuesto)](adr/0005-reuse-hew-core-proposed.md).
+
 ## Ruta de lectura sugerida
 | Orden | Documento | Resultado |
 | --- | --- | --- |
@@ -17,6 +19,8 @@
 | 8 | [Offline-first](OFFLINE_FIRST.md) | Datos locales, privacidad, sync |
 | 9 | [Interoperabilidad](INTEROPERABILITY.md) | GLB, DXF, IFC, SKP y fidelidad |
 | 10 | [Evaluación de motores](ENGINE_EVALUATION.md) | Rúbrica Hew/IngeTrazo y demás |
+| 10a | [Auditoría open source](AUDIT_OPEN_SOURCE.md) | Licencias, evidencia del código, estrategia reuse-first |
+| 10b | [PoC de reutilización](REUSE_POC.md) | Pruebas para elegir el motor con evidencia |
 | 11 | [Roadmap](ROADMAP.md) | M0–M6, criterios de salida |
 | 12 | [Guía para construir MVP](MVP_IMPLEMENTATION.md) | Tickets técnicos en orden |
 | 13 | [Estrategia de pruebas](TEST_STRATEGY.md) | Fixtures, tests, plataforma, evidencia |

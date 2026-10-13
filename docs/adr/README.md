@@ -8,5 +8,6 @@ Cada decisión significativa debe tener un ADR numerado con **Contexto**, **Deci
 | [0002](0002-platform-strategy.md) | Aceptada a nivel de estrategia | Desktop multiplataforma + web futura |
 | [0003](0003-shared-scene.md) | Aceptada a nivel de principios | Escena editable como fuente de verdad |
 | [0004](0004-license.md) | Aceptada | AGPL-3.0-only y atribuciones |
+| [0005](0005-reuse-hew-core-proposed.md) | Propuesta | Reutilización selectiva Hew/Rust/WASM y adaptadores, pendiente de PoC |
 
 **Pendientes:** elección concreta de motor CAD, biblioteca 3D, backend interactivo de render, schema nativo y compatibilidad real de dependencias. No redactar un ADR como si se hubiera validado una tecnología que aún no se ha probado.
