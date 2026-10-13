@@ -6,6 +6,7 @@ an isolated process; NEXO does not inject code or modify its native files.
 from __future__ import annotations
 
 import ctypes
+import os
 import subprocess
 import sys
 import time
@@ -13,14 +14,20 @@ from ctypes import wintypes
 from pathlib import Path
 
 from workspace_contract import launch_for, selected_plan
+from bridge_state import BridgeState, start_server
+from bridge_runtime import (
+    bundled_path, install_plugin, model_environment,
+    plugin_destination, plugin_status, preview_model_path,
+)
 
 if sys.platform != "win32":
     raise SystemExit("Esta prueba de ventanas nativas solo funciona en Windows.")
 
-from PySide6.QtCore import QSettings, Qt, QTimer
+from PySide6.QtCore import QSettings, Qt, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QLabel, QMainWindow, QMessageBox,
-    QStackedWidget, QToolBar, QVBoxLayout, QWidget,
+    QPushButton, QStackedWidget, QToolBar, QVBoxLayout, QWidget,
 )
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -138,6 +145,14 @@ class NexoShell(QMainWindow):
         self.resize(1450, 900)
         self.settings = QSettings("NEXO", "NativeIntegrationPoC")
         self.plan: Path | None = None
+        # A preview GLB is never the user's saved IGZ; each run gets its own path.
+        self.bridge_model = preview_model_path()
+        self.bridge = BridgeState(model=self.bridge_model)
+        self.bridge_server = None
+        self.bridge_url = None
+        site = bundled_path("render_web")
+        if (site / "index.html").is_file():
+            self.bridge_server, self.bridge_url = start_server(self.bridge, site)
         self.panes = {
             "cad": EditorPane("Selecciona IngeCAD.exe para trabajar con todas sus herramientas CAD."),
             "model": EditorPane("Selecciona IngeTrazo.exe para usar Push/Pull, Offset y caras."),
@@ -145,9 +160,13 @@ class NexoShell(QMainWindow):
         self.stack = QStackedWidget()
         for pane in self.panes.values():
             self.stack.addWidget(pane)
+        self.render_pane = self._make_render_pane()
+        self.stack.addWidget(self.render_pane)
         self.setCentralWidget(self.stack)
         self._toolbar()
-        self.statusBar().showMessage("Prototipo: DWG/DXF como puente, sin sincronización bidireccional.")
+        self.statusBar().showMessage(
+            "NEXO Bridge experimental: DXF guardado → referencia 3D → GLB/Render. "
+            "No hay sincronización bidireccional.")
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._poll)
         self.timer.start(500)
@@ -158,12 +177,51 @@ class NexoShell(QMainWindow):
         self.addToolBar(tb)
         tb.addAction("CAD 2D", lambda: self._switch("cad"))
         tb.addAction("Modelado 3D", lambda: self._switch("model"))
+        tb.addAction("Render Live", lambda: self._switch("render"))
         tb.addSeparator()
         tb.addAction("Abrir DWG / DXF", self._choose_plan)
         tb.addAction("Enviar plano a Modelado", self._send_to_model)
+        tb.addAction("Instalar extensión NEXO", self._install_live_extension)
         tb.addSeparator()
         tb.addAction("IngeCAD.exe", lambda: self._choose_exe("cad"))
         tb.addAction("IngeTrazo.exe", lambda: self._choose_exe("model"))
+
+    def _make_render_pane(self):
+        pane = QWidget()
+        layout = QVBoxLayout(pane)
+        if not self.bridge_url:
+            help_text = "Visor Render sin compilar. Construye los recursos web del prototipo."
+        else:
+            help_text = "Render se actualiza después de guardar el CAD o editar el modelo."
+            if os.environ.get("QT_QPA_PLATFORM") != "offscreen":
+                try:
+                    from PySide6.QtWebEngineWidgets import QWebEngineView
+                    view = QWebEngineView(pane)
+                    view.setUrl(QUrl(self.bridge_url))
+                    layout.addWidget(view, 1)
+                except ImportError:
+                    help_text = "Falta QtWebEngine: usa temporalmente el visor externo."
+        label = QLabel(help_text)
+        label.setWordWrap(True)
+        layout.addWidget(label)
+        if self.bridge_url:
+            button = QPushButton("Abrir visor en navegador (alternativa)")
+            button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(self.bridge_url)))
+            layout.addWidget(button)
+        return pane
+
+    def _install_live_extension(self):
+        source = bundled_path("plugins", "nexo_live_bridge.py")
+        try:
+            destination = plugin_destination()
+            install_plugin(source, destination)
+        except (FileExistsError, FileNotFoundError, OSError, RuntimeError) as exc:
+            QMessageBox.warning(self, "Extensión NEXO", str(exc))
+            return
+        QMessageBox.information(self, "Extensión NEXO instalada",
+            "Instalada en el perfil de IngeTrazo sin modificar su código base. "
+            "Para activarla, inicia IngeTrazo desde NEXO. "
+            "Si IngeTrazo ya está abierto, guarda tu IGZ y reinícialo manualmente.")
 
     def _choose_exe(self, workspace: str):
         key = f"{workspace}/exe"
@@ -180,11 +238,22 @@ class NexoShell(QMainWindow):
         if not filename:
             return
         try:
-            self.plan = selected_plan(filename)
+            picked = selected_plan(filename)
         except ValueError as exc:
             QMessageBox.warning(self, "Plano inválido", str(exc))
             return
-        self.statusBar().showMessage(f"Plano: {self.plan}", 8000)
+        if (self.panes["model"].process is not None and picked != self.plan):
+            QMessageBox.warning(self, "Modelado activo",
+                "Guarda el IGZ y cierra IngeTrazo antes de cambiar de plano. "
+                "La extensión enlaza el DXF al iniciar y no cambia de archivo en caliente.")
+            return
+        self.plan = picked
+        self.bridge.configure(
+            plan=self.plan if self.plan and self.plan.suffix.lower() == ".dxf" else None,
+            model=self.bridge_model)
+        message = (f"Plano DXF enlazable: {self.plan}" if self.plan.suffix.lower() == ".dxf"
+                   else "DWG abierto para CAD: guarda una copia DXF antes del enlace en vivo.")
+        self.statusBar().showMessage(message, 8000)
         if self.panes["cad"].process is None:
             self._switch("cad")
         else:
@@ -193,6 +262,9 @@ class NexoShell(QMainWindow):
                 "La selección de NEXO no sustituye el dibujo abierto.")
 
     def _switch(self, workspace: str):
+        if workspace == "render":
+            self.stack.setCurrentWidget(self.render_pane)
+            return
         pane = self.panes[workspace]
         self.stack.setCurrentWidget(pane)
         if pane.process is None:
@@ -204,10 +276,27 @@ class NexoShell(QMainWindow):
         if not exe or not Path(exe).is_file():
             pane.info.setText("Selecciona primero el ejecutable .exe del editor correspondiente.")
             return
+        args = launch_for(workspace, self.plan).arguments
+        child_env = None
+        if workspace == "model":
+            try:
+                source = bundled_path("plugins", "nexo_live_bridge.py")
+                enabled = plugin_status(source, plugin_destination()) == "installed"
+            except (OSError, RuntimeError):
+                enabled = False
+            if enabled:
+                child_env = model_environment(self.plan, self.bridge_model)
+                if self.plan and self.plan.suffix.lower() == ".dxf":
+                    # Plugin imports a linked reference into a blank document:
+                    # do not import the same DXF twice via CLI arguments.
+                    args = ("--new-window",)
+            else:
+                self.statusBar().showMessage(
+                    "Instala la extensión NEXO para sincronizar CAD y Render; "
+                    "el editor seguirá funcionando normalmente.", 9000)
         try:
             pane.process = subprocess.Popen(
-                [exe, *launch_for(workspace, self.plan).arguments],
-                cwd=str(Path(exe).parent))
+                [exe, *args], cwd=str(Path(exe).parent), env=child_env)
         except OSError as exc:
             pane.process = None
             pane.info.setText(f"Error iniciando editor: {exc}")
@@ -223,13 +312,20 @@ class NexoShell(QMainWindow):
             return
         if self.panes["model"].process is not None:
             QMessageBox.information(self, "Modelado en uso",
-                "IngeTrazo ya está abierto. No reiniciaré su proceso ni sobrescribiré "
-                "cambios. Importa el DXF/DWG actualizado usando sus herramientas.")
+                "IngeTrazo ya está abierto. Con la extensión NEXO activa, "
+                "un DXF guardado se actualiza automáticamente; no se reinicia "
+                "ni se sobrescribe el documento IGZ.")
             self._switch("model")
             return
         self._switch("model")
 
     def _poll(self):
+        changed = self.bridge.poll()
+        if changed:
+            revisions = self.bridge.snapshot()
+            updated = ", ".join(f"{key}: r{revisions[key]['revision']}"
+                                for key in sorted(changed))
+            self.statusBar().showMessage(f"NEXO Bridge · {updated}", 3500)
         for workspace, pane in self.panes.items():
             if pane.process is None:
                 continue
@@ -261,6 +357,9 @@ class NexoShell(QMainWindow):
         # Never force-terminate a modeler: the user may have unsaved work.
         for pane in self.panes.values():
             pane.host.detach()
+        if self.bridge_server:
+            self.bridge_server.shutdown()
+            self.bridge_server.server_close()
         super().closeEvent(event)
 
 
