@@ -143,7 +143,7 @@ Se inspeccionaron, mediante GitHub, metadatos públicos, documentos de arquitect
 - PR #1 (`feat/mvp-local-glb-workspaces`) y PR #2 (`feat/cad2d-linked-walls`) **siguen siendo útiles como pruebas de concepto** del estado compartido, pero no son bases profesionales para expandir con centenares de herramientas.
 - **No fusionarlos automáticamente a `main` ni reescribir Hew sin evaluación.** Conservarlos como experimentos/fixtures que definen comportamiento esperado.
 - Recuperar ideas y tests útiles, **no copiar implementaciones primitivas CAD** al fork si Hew ya tiene solución superior.
-- Documento de decisión final pendiente: [ADR-0006](../adr/0006-engine-selection-pending.md).
+- Documento de decisión final pendiente: [ADR-0006](../adr/0005-reuse-first-evaluation.md).
 
 ## 7. Pruebas de integración exigidas (sin resultados todavía)
 

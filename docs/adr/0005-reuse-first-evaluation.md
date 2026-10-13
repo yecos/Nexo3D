@@ -1,4 +1,4 @@
-# ADR-0006: política de reutilización y selección de base pendiente
+# ADR-0005: política de reutilización y selección de base pendiente
 
 **Fecha:** 2026-10-13  
 **Estado:** Reutilización primero **ACEPTADA**; elección final de motor **PENDIENTE de PoC**.

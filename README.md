@@ -4,7 +4,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
 
-> **Estado (2026-10-13): fase de diseño y documentación.** Este repositorio NO contiene todavía una aplicación instalable, un motor propio implementado ni un prototipo validado. Las tecnologías listadas son propuestas que requieren pruebas y auditorías.
+> **Estado (2026-10-13): documentación en `main`, prototipos experimentales en [PR #1](https://github.com/yecos/Nexo3D/pull/1) y [PR #2](https://github.com/yecos/Nexo3D/pull/2).** Todavía no hay aplicación instalable ni stack seleccionado. La [auditoría de reutilización de OSS](docs/audits/2026-10-13-oss-reuse-audit.md) identifica bases reales y pruebas de selección pendientes.
 
 ## La idea
 Una plataforma multiplataforma y **offline-first** con **cuatro espacios de trabajo sobre un único proyecto**:
@@ -25,6 +25,10 @@ El mismo objeto y sus propiedades permanecen sincronizados al cambiar de espacio
 - **Archivos locales y portables:** guardado recuperable, backups y migraciones de versión.
 - **Interop realista:** glTF/GLB inicialmente; DXF/IFC/SKP según estudios y pruebas. No prometer compatibilidad total con DWG/SKP/D5.
 - **Transparencia:** separar lo implementado, lo experimental y lo planificado; exigir pruebas y evidencia.
+
+## Estrategia actual: reutilización primero
+
+Antes de desarrollar más herramientas de CAD/3D desde cero, comparar dos bases: **Hew** (Rust/WASM, escritorio y navegador) frente a **IngeCAD + IngeTrazo** (CAD y 3D Qt/Python con render Blender existente). **LibreCAD GPLv2-only no se integrará directamente** al mismo programa AGPLv3 sin una solución legal demostrada. Ver [informe completo](docs/audits/2026-10-13-oss-reuse-audit.md) y [plan de PoC](docs/spikes/FOUNDATION_POC_PLAN.md).
 
 ## Primera meta (MVP)
 1. Importar un modelo GLB.
