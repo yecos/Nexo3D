@@ -119,7 +119,7 @@ try {
       integration:'nexo-hew',protocol:1,
       sourceCommit:'f36661fb726253e501ef26a4d5fff3cc6381d814',
       implementation:'embedded-web-modeler'
-    },null,2)+'\\n');
+    },null,2)+'\n');
     const stat=await readFile(join(target,'index.html'),'utf8');
     must(stat.includes('/hew/'),'Build sin base /hew/');
     console.log('NEXO: built upstream Hew with embedded WebAssembly into '+target);
