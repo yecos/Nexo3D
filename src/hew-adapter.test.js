@@ -71,7 +71,7 @@ test('no lift or invalid/unsupported projects fail closed',()=>{
   p.cad.shapes[0].extrusion=null;
   assert.throws(()=>convert(p),/no contiene trazos CAD/);
   p.cad.shapes[0].extrusion={height:0,thickness:.15};
-  assert.throws(()=>convert(p),/extrusión CAD/);
+  assert.throws(()=>convert(p),/Extrusión CAD/);
   assert.throws(()=>parseProject('{"schemaVersion":2,"format":"bad"}'),/compatible/);
 });
 test('adapter is deterministic after save/reopen',()=>{
