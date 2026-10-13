@@ -60,6 +60,7 @@ class BridgeState:
         self.cad: AssetRevision | None = None
         self.mesh: AssetRevision | None = None
         self._candidate: dict[str, tuple[tuple[int, int], int]] = {}
+        self._published_signature: dict[str, tuple[int, int]] = {}
         self._lock = threading.RLock()
 
     def configure(self, *, plan: Path | None, model: Path | None):
@@ -68,6 +69,7 @@ class BridgeState:
             self.model = Path(model).resolve() if model else None
             self.cad = self.mesh = None
             self._candidate.clear()
+            self._published_signature.clear()
 
     def poll(self) -> set[str]:
         changed: set[str] = set()
@@ -88,13 +90,22 @@ class BridgeState:
                     self._candidate[key] = (signature, count)
                     if count < 2:
                         continue
+                    # Avoid re-hashing a potentially 350 MB GLB each 500 ms.
+                    # New saves still require a fresh digest before publication.
+                    if self._published_signature.get(key) == signature:
+                        continue
                     if key == "model" and not valid_glb(path):
                         continue
                     digest = file_digest(path, limit)
+                    # Never publish bytes observed during a concurrent write.
+                    again = path.stat()
+                    if (again.st_size, again.st_mtime_ns) != signature:
+                        continue
                 except (OSError, ValueError):
                     continue
                 current = self.cad if key == "cad" else self.mesh
                 if current is not None and current.sha256 == digest:
+                    self._published_signature[key] = signature
                     continue
                 item = AssetRevision(path=path, sha256=digest,
                                      revision=1 if current is None else current.revision + 1)
@@ -102,6 +113,7 @@ class BridgeState:
                     self.cad = item
                 else:
                     self.mesh = item
+                self._published_signature[key] = signature
                 changed.add(key)
         return changed
 
@@ -175,7 +187,8 @@ def start_server(state: BridgeState, site: Path) -> tuple[ThreadingHTTPServer, s
             self.send_header("Content-Length", str(len(data)))
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Cache-Control", "no-store" if no_cache else "public, max-age=3600")
-            self.send_header("Access-Control-Allow-Origin", "null")
+            # The preview is served from this same origin: no cross-origin
+            # access to a user's private CAD/model data is necessary.
             self.end_headers()
             self.wfile.write(data)
 
