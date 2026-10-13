@@ -54,7 +54,9 @@ jobs:
           echo 'PASS: NEXO bundle contains genuine Hew React+WASM editor'
       - name: Install Chromium to verify real save/reopen in browser
         run: |
-          corepack pnpm --dir upstream-hew/app exec playwright install --with-deps chromium
+          # Run from the pinned upstream workspace so Corepack uses Hew's pnpm version.
+          cd upstream-hew
+          corepack pnpm --dir app exec playwright install --with-deps chromium
       - name: Test real browser CAD -> Hew -> single file -> reopen
         shell: bash
         run: |
