@@ -78,14 +78,33 @@
         <section class="panel" id="model-inspector"><h2 id="inspector-title">Propiedades</h2><div id="inspector"></div></section>
         <section class="panel" id="cad-inspector"><h2>CAD · Geometría</h2><div id="cad-controls"></div></section>
         <section id="render-settings" class="panel render-only" hidden>
-          <h2>Escena e iluminación</h2>
-          <label for="sun-light">Luz principal</label>
+          <div class="panel-heading"><h2>Estudio de Render</h2><button id="render-reset" title="Restaurar parámetros de visualización">Restablecer</button></div>
+          <p class="small">Vista arquitectónica PBR en tiempo real, dentro del mismo proyecto NEXO 3D.</p>
+          <label for="render-quality">Calidad de visualización</label>
+          <select id="render-quality"><option value="fast">Rápida · GPU ligera</option><option value="balanced">Equilibrada</option><option value="studio">Estudio · calidad alta</option></select>
+          <h3>Sol y ambiente</h3>
+          <label for="render-sun-azimuth">Orientación del sol · azimut</label>
+          <input id="render-sun-azimuth" type="range" min="0" max="360" step="1" value="135">
+          <label for="render-sun-elevation">Altura del sol</label>
+          <input id="render-sun-elevation" type="range" min="0" max="90" step="1" value="48">
+          <label for="sun-light">Intensidad del sol</label>
           <input id="sun-light" type="range" min="0" max="6" step="0.1" value="2">
-          <label for="ambient-light">Luz ambiental</label>
+          <label for="ambient-light">Iluminación ambiental</label>
           <input id="ambient-light" type="range" min="0" max="4" step="0.1" value="1.2">
+          <h3>Fotografía</h3>
+          <label for="render-exposure">Exposición</label>
+          <input id="render-exposure" type="range" min="0.2" max="3" step="0.05" value="1.1">
           <label for="background-color">Color del entorno</label>
           <input id="background-color" type="color" value="#1b2327">
-          <p class="small">PBR básico en tiempo real. HDRI, path tracing y render final son fases posteriores.</p>
+          <label for="render-ground-color">Color del suelo</label>
+          <input id="render-ground-color" type="color" value="#77746c">
+          <h3>Sombras y profundidad</h3>
+          <label class="render-check"><input id="render-shadows" type="checkbox" checked> Sombras proyectadas</label>
+          <label class="render-check"><input id="render-ao" type="checkbox"> Oclusión ambiental GTAO</label>
+          <label for="render-ao-intensity">Intensidad de oclusión</label>
+          <input id="render-ao-intensity" type="range" min="0" max="2" step="0.1" value="0.8">
+          <label class="render-check"><input id="render-grid" type="checkbox"> Mostrar rejilla auxiliar</label>
+          <p class="small">El modo Estudio usa más GPU. GTAO mejora sombras de contacto; no equivale a Lumen ni a iluminación global/path tracing. Blender/Cycles sigue reservado para el render final.</p>
         </section>
       </aside>
     </main>

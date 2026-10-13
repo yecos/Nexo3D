@@ -99,3 +99,12 @@ input[type=color] { width: 52px; height: 28px; background: transparent; padding:
 #hew-missing p {max-width:620px;}
 #hew-missing code {color:#f1d5aa;}
 @media(max-width:900px) {#hew-toolbar {padding:5px;gap:4px;} #hew-toolbar button {padding:7px 6px;}}
+
+/* NEXO Render Studio R1: all controls belong to the same application shell. */
+#render-settings h3 { color:#d5b88f; font-size:12px; letter-spacing:.05em; margin:21px 0 10px; padding-top:14px; border-top:1px solid #3b4245; }
+#render-settings select {width:100%; background:#293034; color:#ecefeb; border:1px solid #495358; border-radius:7px; padding:9px; font-size:12px;}
+#render-settings .render-check {display:flex;align-items:center;gap:8px; margin:12px 0; cursor:pointer;}
+#render-settings .render-check input {accent-color:#d5b88f; width:16px;height:16px;margin:0;}
+#render-settings .panel-heading {align-items:center;gap:8px;}
+#render-settings .panel-heading h2 {margin:0;}
+#render-settings input[type=range]:focus-visible, #render-settings select:focus-visible {outline:2px solid #d5b88f;outline-offset:2px;}

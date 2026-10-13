@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 NEXO 3D contributors
 import { defaultCad, cloneCad, validateCad } from './cad-domain.js';
+import {RENDER_STUDIO_DEFAULTS,validateRenderStudio,withRenderStudioDefaults} from './render-studio.js';
 export const FORMAT = 'nexo3d-prototype';
 export const SCHEMA_VERSION = 3;
 export const MAX_HEW_BYTES = 30 * 1024 * 1024;
@@ -27,7 +28,8 @@ export function makeProject() {
     format: FORMAT, schemaVersion: SCHEMA_VERSION,
     id: newId(), name: 'Proyecto sin título', units: 'm',
     nodes: [makeBox('Volumen de prueba')], assets: {}, cad: defaultCad(), hew: null,
-    render: { background: '#1b2327', sunIntensity: 2, ambientIntensity: 1.2 }
+    render: { background: '#1b2327', sunIntensity: 2, ambientIntensity: 1.2,
+      ...RENDER_STUDIO_DEFAULTS }
   };
 }
 export function cloneForEdit(project) {
@@ -119,6 +121,7 @@ export function validateProject(project) {
       project.render.sunIntensity < 0 || project.render.sunIntensity > 6 ||
       project.render.ambientIntensity < 0 || project.render.ambientIntensity > 4)
     throw new Error('Parámetros de iluminación inválidos.');
+  validateRenderStudio(project.render);
   validateCad(project.cad);
   // The Hew native document is a self-contained ZIP binary, embedded in the
   // same offline JSON as CAD and GLB previews. There are no external paths.
@@ -187,6 +190,9 @@ export function parseProject(text) {
     parsed.hew = null;
     parsed.schemaVersion = SCHEMA_VERSION;
   }
+  if(parsed?.format === FORMAT && parsed.schemaVersion === SCHEMA_VERSION &&
+    parsed.render && typeof parsed.render === 'object' && !Array.isArray(parsed.render))
+    parsed.render = withRenderStudioDefaults(parsed.render);
   return validateProject(parsed);
 }
 export function saveProject(project) {

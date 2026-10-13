@@ -8,6 +8,7 @@ import { Viewer } from './viewer.js';
 import { CADWorkspace } from './cad-ui.js';
 import { validateCad } from './cad-domain.js';
 import { HewWorkspace } from './hew-workspace.js';
+import {RENDER_STUDIO_DEFAULTS,withRenderStudioDefaults} from './render-studio.js';
 
 const el = id => document.getElementById(id);
 const escaped = value => String(value).replace(/[&<>"']/g, c => ({
@@ -139,6 +140,7 @@ function refresh() {
   el('hew-model-wrap').hidden = !isHew;
   el('cad-surface-wrap').hidden = !isCAD;
   el('viewport').hidden = workspace !== 'render';
+  viewer.setActive(workspace === 'render');
   el('viewport-overlay').hidden = workspace !== 'render';
   el('viewport-hint').hidden = workspace !== 'render';
   el('cad-layers').hidden = !isCAD;
@@ -161,6 +163,15 @@ function refresh() {
   el('sun-light').value = String(project.render.sunIntensity);
   el('ambient-light').value = String(project.render.ambientIntensity);
   el('background-color').value = project.render.background;
+  const renderConfig=withRenderStudioDefaults(project.render);
+  for(const [id,field] of [
+    ['render-quality','quality'],['render-sun-azimuth','sunAzimuth'],
+    ['render-sun-elevation','sunElevation'],['render-exposure','exposure'],
+    ['render-ground-color','groundColor'],['render-ao-intensity','aoIntensity']
+  ]) el(id).value=String(renderConfig[field]);
+  for(const [id,field] of [
+    ['render-shadows','shadows'],['render-ao','ambientOcclusion'],['render-grid','showGrid']
+  ]) el(id).checked=renderConfig[field];
   viewer.setSelection(selectedId);
   void viewer.sync(project);
   if (workspace === 'render') viewer.resize();
@@ -299,8 +310,42 @@ el('save-project').addEventListener('click', async () => {
     status('No se descargó el proyecto: '+error.message,true);
   }finally{button.disabled=false;}
 });
+// Adjust the live viewport during slider movement; commit only on change
+// to avoid filling undo history with every mouse movement.
+function previewRender(field,value){
+  const draft={...project.render,[field]:value};
+  viewer.applyRenderStudio(draft);
+  viewer.sun.intensity=draft.sunIntensity;
+  viewer.ambient.intensity=draft.ambientIntensity;
+  viewer.scene.background.set(draft.background);
+}
+for(const [id,field,type] of [
+  ['render-quality','quality','string'],
+  ['render-sun-azimuth','sunAzimuth','number'],
+  ['render-sun-elevation','sunElevation','number'],
+  ['render-exposure','exposure','number'],
+  ['render-ground-color','groundColor','string'],
+  ['render-ao-intensity','aoIntensity','number'],
+  ['render-shadows','shadows','boolean'],
+  ['render-ao','ambientOcclusion','boolean'],
+  ['render-grid','showGrid','boolean']
+]){
+  const node=el(id);
+  const read=()=>type==='boolean'?node.checked:type==='number'?Number(node.value):node.value;
+  node.addEventListener('input',()=>previewRender(field,read()));
+  node.addEventListener('change',()=>update(p=>{p.render[field]=read();},
+    'Parámetro de estudio actualizado: '+field));
+}
+el('render-reset').addEventListener('click',()=>{
+  update(p=>{p.render={...p.render,...RENDER_STUDIO_DEFAULTS};},
+    'Parámetros de render restablecidos.');
+});
 for (const [id, field] of [['sun-light', 'sunIntensity'], ['ambient-light', 'ambientIntensity'],
   ['background-color', 'background']]) {
+  el(id).addEventListener('input', event => {
+    const value=field==='background'?event.target.value:Number(event.target.value);
+    previewRender(field,value);
+  });
   el(id).addEventListener('change', event => {
     const value = field === 'background' ? event.target.value : Number(event.target.value);
     update(p => { p.render[field] = value; }, 'Iluminación actualizada.');

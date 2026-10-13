@@ -38,6 +38,10 @@ Hay una [integración CAD → Hew → GLB/SKP → Blender](docs/HEW_FOUNDATION.m
 
 La rama `feat/unified-nexo-hew-project` permite incorporar el documento **editable** de Hew en el mismo archivo `.nexo3d.json` que almacena CAD y Render. El editor 3D no se reduce a un GLB: NEXO captura y reabre la escena Hew WASM. [Flujo y límites](docs/HEW_UNIFIED_PROJECT.md).
 
+## Render Studio en tiempo real
+
+La rama experimental `feat/render-studio-realtime` añade a la **misma ventana NEXO** controles de sol, exposición, sombras y GTAO, usando Three.js sin copiar tecnologías propietarias de D5/Unreal. Los ajustes se guardan en el proyecto único y el GLB de Hew se visualiza sin duplicar muros CAD. **No es Lumen ni path tracing en tiempo real.** Ver [arquitectura y límites](docs/RENDERING.md).
+
 ## Primera meta (MVP)
 1. Importar un modelo GLB.
 2. Mostrarlo y transformar al menos un objeto.
