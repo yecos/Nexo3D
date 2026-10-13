@@ -5,6 +5,7 @@ import {
   saveProject, validateGLB, MAX_PROJECT_BYTES
 } from './domain.js';
 import { Viewer } from './viewer.js';
+import { CADWorkspace } from './cad-ui.js';
 
 const el = id => document.getElementById(id);
 const escaped = value => String(value).replace(/[&<>"']/g, c => ({
@@ -13,7 +14,7 @@ const escaped = value => String(value).replace(/[&<>"']/g, c => ({
 const formatter = num => Number(num).toFixed(2);
 let project = makeProject();
 let selectedId = project.nodes[0].id;
-let workspace = 'model';
+let workspace = 'cad';
 const undo = [], redo = [];
 const MAX_UNDO = 40;
 
@@ -56,6 +57,10 @@ const viewer = new Viewer(el('viewport'), id => {
   }, 'Transformación registrada.');
 });
 viewer.onLoadError = e => status('No se pudo interpretar el modelo: ' + e.message, true);
+const cad = new CADWorkspace(
+  el('cad-surface'), el('cad-tools'), el('cad-controls'), el('cad-layers'),
+  () => project, update, status
+);
 
 function renderList() {
   const list = el('scene-list');
@@ -68,10 +73,13 @@ function renderList() {
     btn.title = node.name;
     list.append(btn);
   }
-  el('object-count').textContent = String(project.nodes.length) + ' objeto(s)';
+  const walls = project.cad.shapes.filter(shape => shape.extrusion).length;
+  el('object-count').textContent = String(project.nodes.length) + ' objeto(s) · ' +
+    String(walls) + ' trazo(s) levantado(s)';
 }
 
 function renderInspector() {
+  if (workspace === 'cad') return;
   const n = nodeById();
   const inspector = el('inspector');
   if (!n) {
@@ -101,6 +109,16 @@ function renderInspector() {
 }
 
 function refresh() {
+  const isCAD = workspace === 'cad';
+  el('cad-surface-wrap').hidden = !isCAD;
+  el('viewport').hidden = isCAD;
+  el('viewport-overlay').hidden = isCAD;
+  el('viewport-hint').hidden = isCAD;
+  el('cad-layers').hidden = !isCAD;
+  el('scene-panel').hidden = isCAD;
+  el('model-inspector').hidden = isCAD;
+  el('cad-inspector').hidden = !isCAD;
+  cad.setVisible(isCAD);
   renderList();
   renderInspector();
   el('render-settings').hidden = workspace !== 'render';
@@ -109,13 +127,15 @@ function refresh() {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   }
-  el('workspace-label').textContent = workspace === 'render'
-    ? 'Materiales e iluminación en tiempo real' : 'Transformaciones y geometría';
+  el('workspace-label').textContent = workspace === 'cad' ? 'Dibujo técnico · metros · capas'
+    : workspace === 'render' ? 'Materiales e iluminación en tiempo real'
+    : 'Transformaciones y geometría';
   el('sun-light').value = String(project.render.sunIntensity);
   el('ambient-light').value = String(project.render.ambientIntensity);
   el('background-color').value = project.render.background;
   viewer.setSelection(selectedId);
   void viewer.sync(project);
+  if (!isCAD) viewer.resize();
 }
 el('scene-list').addEventListener('click', event => {
   const button = event.target.closest('button[data-id]');
@@ -127,7 +147,8 @@ document.querySelectorAll('[data-workspace]').forEach(button => {
   button.addEventListener('click', () => {
     workspace = button.dataset.workspace;
     refresh();
-    status('Espacio ' + (workspace === 'render' ? 'Render' : 'Modelado') + ' activo. Misma escena.');
+    status('Espacio ' + ({cad:'CAD 2D',model:'Modelado 3D',render:'Render'}[workspace]) +
+      ' activo. Mismo proyecto.');
   });
 });
 el('inspector').addEventListener('change', event => {
@@ -232,9 +253,13 @@ document.addEventListener('keydown', e => {
     const current = redo.pop(); if (!current) return;
     undo.push(cloneForEdit(project)); changed(current, 'Rehacer.');
   }
+  if (workspace === 'cad') {
+    if (cad.handleKey(e)) e.preventDefault();
+    return;
+  }
   if (e.key.toLowerCase() === 'g') viewer.controls.setMode('translate');
   if (e.key.toLowerCase() === 'r') viewer.controls.setMode('rotate');
   if (e.key.toLowerCase() === 's') viewer.controls.setMode('scale');
 });
 refresh();
-status('Primera prueba: importa un GLB y cambia entre Modelado y Render.');
+status('CAD 2D listo. Dibuja líneas y levántalas como muros para verlas en Modelado y Render.');
