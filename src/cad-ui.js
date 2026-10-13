@@ -228,7 +228,7 @@ export class CADWorkspace {
       if (chosen) this.choose(chosen.dataset.cadShape);
     });
     this.layerPanel.addEventListener('change', e => {
-      if (e.target.dataset.layerActive) {
+      if ('layerActive' in e.target.dataset) {
         this.update(p=> {p.cad.activeLayerId=e.target.value;}, 'Capa activa actualizada.');
       }
       if (e.target.dataset.layerVisible) {
