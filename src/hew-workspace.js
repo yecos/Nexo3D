@@ -23,9 +23,14 @@ export class HewWorkspace {
   async init(){
     if (this.started) return this.started;
     this.started=(async()=>{
-      const response=await fetch('/hew/nexo-manifest.json',{cache:'no-store'});
-      if(!response.ok)throw Error('No se ha compilado el editor Hew local. Ejecuta npm run hew:setup.');
-      const manifest=await response.json();
+      const response=await fetch('/hew/nexo-manifest.json',{
+        cache:'no-store',headers:{Accept:'application/json'}
+      });
+      if(!response.ok || !response.headers.get('content-type')?.toLowerCase().includes('application/json'))
+        throw Error('Faltan los archivos locales de Hew. Ejecuta npm run hew:setup y reinicia la página.');
+      let manifest;
+      try { manifest=await response.json(); }
+      catch { throw Error('El manifiesto local de Hew está dañado. Ejecuta npm run hew:setup.'); }
       if(manifest.integration!=='nexo-hew' || manifest.protocol!==1)
         throw Error('Esta compilación de Hew no contiene el enlace NEXO.');
       this.frame.src='/hew/index.html';
