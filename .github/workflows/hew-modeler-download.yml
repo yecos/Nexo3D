@@ -1,0 +1,55 @@
+name: Downloadable Hew Modeler for NEXO Windows
+on:
+  push:
+    branches: [fix/hew-model-workspace-blank]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nexo-prebuilt-hew-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  packaged-hew:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dependencies and Rust WebAssembly target
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          rustup toolchain install 1.97.1 --profile minimal --target wasm32-unknown-unknown
+          corepack enable
+      - name: Fetch fixed Hew upstream and WASM toolkit
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/hew3d/hew.git upstream-hew
+          git -C upstream-hew checkout f36661fb726253e501ef26a4d5fff3cc6381d814
+          bash upstream-hew/scripts/install-wasm-pack.sh
+      - name: Compile original interactive Hew editor for the NEXO shell
+        run: |
+          set -euo pipefail
+          npm run hew:setup
+          test -f public/hew/nexo-manifest.json
+          test -f public/hew/index.html
+          find public/hew -name '*.wasm' | grep -q wasm
+          npm run build
+          test -f dist/hew/index.html
+      - name: Package ready-to-use Windows browser modeler
+        run: |
+          set -euo pipefail
+          zip -qr nexo-modelador-hew.zip public/hew
+          unzip -l nexo-modelador-hew.zip | grep -q 'public/hew/index.html'
+          du -h nexo-modelador-hew.zip
+          printf '%s\n' 'Extract nexo-modelador-hew.zip at the ROOT of your Nexo3D checkout.'             'It creates public/hew/. Then run npm install and npm run dev.' > INSTALL-MODELADOR.txt
+      - name: Publish modeler ZIP and installation note
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexo-hew-windows-sin-rust
+          path: |
+            nexo-modelador-hew.zip
+            INSTALL-MODELADOR.txt
+          retention-days: 7
