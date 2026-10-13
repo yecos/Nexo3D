@@ -1,3 +1,5 @@
+> **Actualización 2026-10-13:** la [auditoría técnica](AUDIT_OPEN_SOURCE.md) encontró que Hew ya implementa Rust/WASM/React/Tauri, IngeTrazo depende de Python/PySide6, **LibreCAD es GPLv2-only como programa** y la biblioteca separada `libdxfrw` es **GPL-2.0-or-later**. La integración directa de la aplicación LibreCAD en una obra combinada AGPLv3 no es aceptable sin permisos adicionales. QCAD es GPLv3. Antes de continuar creando herramientas de dibujo, realizar la [PoC con Hew](REUSE_POC.md). Este análisis es estático; no hay compilación de upstream verificada.
+
 # Evaluación técnica de bases de código y motores
 
 **Regla:** no adoptar tecnología por parecido de interfaz ni por una sola captura. Evaluar código, licencias, APIs, mantenimiento, interoperabilidad, rendimiento y posibilidades web. **No se ha adoptado aún un kernel concreto.**
