@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 NEXO 3D contributors
+import { defaultCad, cloneCad, validateCad } from './cad-domain.js';
 export const FORMAT = 'nexo3d-prototype';
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 export const MAX_GLB_BYTES = 30 * 1024 * 1024;
 export const MAX_PROJECT_BYTES = 70 * 1024 * 1024;
 
@@ -24,7 +25,7 @@ export function makeProject() {
   return {
     format: FORMAT, schemaVersion: SCHEMA_VERSION,
     id: newId(), name: 'Proyecto sin título', units: 'm',
-    nodes: [makeBox('Volumen de prueba')], assets: {},
+    nodes: [makeBox('Volumen de prueba')], assets: {}, cad: defaultCad(),
     render: { background: '#1b2327', sunIntensity: 2, ambientIntensity: 1.2 }
   };
 }
@@ -41,6 +42,7 @@ export function cloneForEdit(project) {
       material: { ...n.material }
     })),
     render: { ...project.render },
+    cad: cloneCad(project.cad),
     assets: project.assets
   };
 }
@@ -116,6 +118,7 @@ export function validateProject(project) {
       project.render.sunIntensity < 0 || project.render.sunIntensity > 6 ||
       project.render.ambientIntensity < 0 || project.render.ambientIntensity > 4)
     throw new Error('Parámetros de iluminación inválidos.');
+  validateCad(project.cad);
   const ids = new Set();
   for (const n of project.nodes) {
     if (!n || typeof n.id !== 'string' || ids.has(n.id) || n.id.length > 120 ||
@@ -149,7 +152,13 @@ export function validateProject(project) {
 export function parseProject(text) {
   if (new TextEncoder().encode(text).length > MAX_PROJECT_BYTES)
     throw new Error('El proyecto excede el límite temporal de 70 MB.');
-  return validateProject(JSON.parse(text));
+  const parsed = JSON.parse(text);
+  // Migration: archived documents from the first 3D-only prototype remain usable.
+  if (parsed?.format === FORMAT && parsed.schemaVersion === 1 && !parsed.cad) {
+    parsed.cad = defaultCad();
+    parsed.schemaVersion = SCHEMA_VERSION;
+  }
+  return validateProject(parsed);
 }
 export function saveProject(project) {
   validateProject(project);
