@@ -1,0 +1,61 @@
+{
+  "format": "nexo3d-prototype",
+  "schemaVersion": 2,
+  "id": "example-room-4x3",
+  "name": "Habitación CAD 4 × 3 m — NEXO a Hew",
+  "units": "m",
+  "nodes": [],
+  "assets": {},
+  "render": {
+    "background": "#1b2327",
+    "sunIntensity": 2,
+    "ambientIntensity": 1.2
+  },
+  "cad": {
+    "layers": [
+      {
+        "id": "layer-architecture",
+        "name": "Arquitectura",
+        "color": "#d6c5a7",
+        "visible": true
+      },
+      {
+        "id": "layer-references",
+        "name": "Referencias",
+        "color": "#7eabb9",
+        "visible": true
+      }
+    ],
+    "activeLayerId": "layer-architecture",
+    "shapes": [
+      {
+        "id": "room-perimeter",
+        "kind": "rectangle",
+        "name": "Perímetro 4 × 3 m",
+        "layerId": "layer-architecture",
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            4,
+            0
+          ],
+          [
+            4,
+            3
+          ],
+          [
+            0,
+            3
+          ]
+        ],
+        "extrusion": {
+          "height": 2.6,
+          "thickness": 0.15
+        }
+      }
+    ]
+  }
+}
