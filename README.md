@@ -42,7 +42,7 @@ Hay una [integración CAD → Hew → GLB/SKP → Blender](docs/HEW_FOUNDATION.m
 5. Guardar localmente el proyecto, cerrar, reabrir y recuperar su estado **sin internet**.
 6. Validarlo al menos en Linux y Windows.
 
-La capacidad CAD 2D y la generación IA llegarán de manera incremental; aún no se han implementado.
+El CAD 2D **básico** existe en esta rama de prototipo (líneas, polilíneas, capas, muro derivado); siguen pendientes las herramientas CAD profesionales, DXF/DWG y la generación IA.
 
 ## Documentación
 Empieza en el **[Índice de documentación](docs/README.md)** y continúa por:
@@ -54,7 +54,7 @@ Empieza en el **[Índice de documentación](docs/README.md)** y continúa por:
 - [Contribuir](CONTRIBUTING.md) · [Seguridad](SECURITY.md)
 
 ## Tecnología
-**En prototipo:** JavaScript, Vite y Three.js como dependencia MIT para viewport. **Por evaluar:** React/TypeScript y Tauri para la aplicación de escritorio; Rust/WASM, Hew e IngeTrazo para modelado; Blender/Cycles para render final. **No se ha incorporado código de Hew, IngeTrazo ni motores CAD propietarios.** Consultar [avisos de terceros](THIRD_PARTY_NOTICES.md).
+**En prototipo:** JavaScript, Vite, Three.js y adaptador experimental al **ejecutable externo oficial de Hew**; Blender/Cycles puede ejecutarse en un proceso separado. **Por evaluar:** React/TypeScript y Tauri para escritorio; integración interactiva de kernel Hew Rust/WASM, y IngeCAD/IngeTrazo como alternativas. **No se ha copiado código fuente de Hew, IngeTrazo ni motores comerciales a este repositorio.** Consultar [avisos de terceros](THIRD_PARTY_NOTICES.md).
 
 ## Contribuir y licencias
 Consulta [CONTRIBUTING.md](CONTRIBUTING.md), [docs/LICENSING.md](docs/LICENSING.md) y [LICENSE](LICENSE). NEXO 3D es un proyecto independiente: no está afiliado con Autodesk, Trimble ni D5. Referencias a productos comerciales se usan solo para describir funcionalidades comparables.
@@ -62,4 +62,4 @@ Consulta [CONTRIBUTING.md](CONTRIBUTING.md), [docs/LICENSING.md](docs/LICENSING.
 ---
 
 ### English summary
-NEXO 3D is a planned free/open-source, offline-first, cross-platform architecture and visualization application with one shared scene and multiple workspaces (CAD, Modeling, Render, AI Studio). **Early design stage; no working release yet.** Source code is licensed under AGPL-3.0-only; third-party materials retain their licenses. Start at [docs/README.md](docs/README.md).
+NEXO 3D is a planned free/open-source, offline-first, cross-platform architecture and visualization application with one shared scene and multiple workspaces (CAD, Modeling, Render, AI Studio). **Working experimental prototypes exist, but no supported public desktop release yet.** Source code is licensed under AGPL-3.0-only; third-party materials retain their licenses. Start at [docs/README.md](docs/README.md).
