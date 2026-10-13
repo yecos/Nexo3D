@@ -95,6 +95,21 @@ test('Hew GLB export is handed back to NEXO Render without network',async()=>{
   assert(m.updates.some(v=>v instanceof ArrayBuffer));
   m.hew.dispose();
 });
+test('switching to Render waits for staged Hew native restore before exporting',async()=>{
+  const m=mock();
+  const zip=new Uint8Array(40);zip.set([0x50,0x4b,0x03,0x04]);
+  const project=withHewDocument(m.project,zip.buffer,['obj_1']);
+  assert.equal(await m.hew.loadProject(project),false);
+  m.ready();
+  const glb=await m.hew.updateRender();
+  assert.equal(glb.byteLength,16);
+  assert.deepEqual(
+    m.messages.filter(x=>['nexo:hew.load','nexo:hew.export'].includes(x.type)).map(x=>x.type),
+    ['nexo:hew.load','nexo:hew.export']
+  );
+  assert.deepEqual(m.hew.generatedIds,['obj_1']);
+  m.hew.dispose();
+});
 test('session reset drops stale wall identifiers and pending operations',()=>{
   const m=mock();m.ready();
   m.hew.generatedIds=['obj-12'];
