@@ -90,6 +90,20 @@ export class CADWorkspace {
     this.selectedId = id;
     this.render();
   }
+  hitTest(point) {
+    let best = 9 / this.scale, match = null;
+    for (const shape of this.cad.shapes) {
+      if (this.cad.layers.find(l => l.id === shape.layerId)?.visible === false) continue;
+      for (const [a,b] of segmentPairs(shape)) {
+        const dx = b[0]-a[0], dy = b[1]-a[1];
+        const t = Math.max(0,Math.min(1,
+          ((point[0]-a[0])*dx+(point[1]-a[1])*dy)/(dx*dx+dy*dy)));
+        const d = distance(point,[a[0]+t*dx,a[1]+t*dy]);
+        if (d < best) { best=d; match=shape.id; }
+      }
+    }
+    return match;
+  }
   insertPoint(point) {
     const p = this.snap(point);
     if (this.tool === 'select') return;
@@ -181,7 +195,7 @@ export class CADWorkspace {
       if (this.skipClick) { this.skipClick = false; return; }
       if (this.tool === 'select') {
         const obj = e.target.closest('[data-cad-id]');
-        this.choose(obj?.getAttribute('data-cad-id') || null);
+        this.choose(obj?.getAttribute('data-cad-id') || this.hitTest(this.pointer(e)));
       } else this.insertPoint(this.snap(this.pointer(e), e.shiftKey));
     });
     this.svg.addEventListener('contextmenu', e => {
