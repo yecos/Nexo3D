@@ -1,49 +1,32 @@
 # Interoperabilidad y política de importación/exportación
 
-**Estado a 2026-10-13:** primer prototipo en rama de desarrollo. **Importación GLB propuesta/implementada en código experimental, pendiente de pruebas E2E.** Todos los demás formatos **NO DISPONIBLES** todavía.
+**Estado:** soporte REAL se declarará solo tras implementarlo y probarlo. NEXO 3D no reproduce formatos propietarios de manera automática.
 
-## Regla de oro
-El formato nativo editable es la fuente primaria. Importar formatos externos **no garantiza** recuperar cotas, restricciones, familias BIM ni propiedades de render. Cada importador emite warnings de conversión/pérdida y soporta un subconjunto versionado verificable.
+## Principio
+El **formato nativo editable** es la fuente primaria. Los importadores convierten a entidades propias y **no necesariamente recuperan** cotas, restricciones, familias BIM ni materiales del programa de origen. Los exportadores producen archivos de intercambio, nunca la única versión del proyecto.
 
-## Compatibilidad por etapas
-| Formato | Intención | Estado actual | Biblioteca candidata / riesgo |
+## Matriz objetivo
+| Formato | Inicial | Dirección | Objetivo / cautela |
 | --- | --- | --- | --- |
-| **GLB (glTF binario)** | Importar primero, exportar después | **Prototipo experimental en rama** | Three.js/GLTFLoader. Solo 2.0, autocontenido, máx. 30 MB |
-| **glTF (.gltf)** | Importar/exportar | Planificado | Recursos externos y rutas seguras |
-| **OBJ/MTL** | Importar/exportar mallas | Planificado | Pérdida de jerarquías y materiales PBR |
-| **DXF** | Import/export CAD 2D | M3 | LibreCAD/QCAD/implementación; cotas/capas por subconjunto |
-| **SKP** | Import/export geometría y componentes | Investigación | OpenSKP/Hew: matriz por versión, licencia y round-trip |
-| **DWG** | Import/export CAD con reportes | Investigación | LibreDWG; limitaciones de versiones/escritura/entidades |
-| **FBX** | Intercambiar modelos | Investigación | Assimp u otro conversor licenciado; materiales y animación |
-| **STEP/STP** | Sólidos CAD precisos | Investigación | Kernel B-Rep; no confundir con malla importada |
-| **IFC** | Arquitectura BIM | Investigación | IfcOpenShell y entidades semánticas |
-| **DAE/3DS/STL** | Importar/exportar según casos | Posterior | Pérdida posible de escala/materiales/animaciones |
-| **USD/USDZ** | Intercambio de escenas | Posterior | SDK, licencia, tamaño y plataforma |
-| **Formato nativo D5** | — | Fuera de alcance inicial | No garantizar lectura de proyectos propietarios |
+| **GLB/glTF** | M1 | Importar; exportar P1 | Escena, jerarquía, mallas, PBR; no BIM/CAD paramétrico garantizado |
+| **OBJ** | Posterior | Import/export | Mallas estáticas; limitación materiales y jerarquía |
+| **DXF** | M3 | Import/export 2D | Entidades, cotas y layers según subconjunto probado |
+| **IFC** | Posterior | Import/export | BIM semántico vía librerías y schema compatibles |
+| **SKP** | Investigación | Según licencia/implementación | Compatibilidad variable por versión; auditar reverse engineering independiente |
+| **DWG** | Investigación | Según soporte legal/técnico | Formato complejo; no prometer paridad AutoCAD |
+| **Archivos D5 nativos** | Fuera de alcance inicial | — | Sin compatibilidad garantizada ni ingeniería invasiva del ejecutable |
 
-## Contratos de importación
-1. `probe` identifica versión, formato, tamaño y requisitos.
-2. `parse` opera sobre archivo no confiable, sin acceso a internet por defecto.
-3. `validate` comprueba estructuras, límites y referencias.
-4. `convert` genera documento temporal con informe de pérdidas.
-5. `commit` aplica cambios en transacción con deshacer.
-6. `export` entrega archivo y metadatos, nunca reemplaza implícitamente el original.
+## Contrato de adaptador
+`probe(file)` → mime/format/version; `import(file, options)` → objeto de escena temporal + warnings; `validate`; `commit` en transacción; `export(snapshot, options)` → archivo + reporte de pérdidas. Los datos de origen no deben ejecutarse como código.
 
-## Pruebas de fidelidad por formato
-| Familia | Debe verificarse |
-| --- | --- |
-| CAD DWG/DXF | Capas, unidades, arcos, polilíneas, bloques, textos, cotas, layouts |
-| SKP | Caras, grupos, instancias, materiales, UV, transforms y versiones |
-| Mallas GLB/OBJ/FBX | Orientación, escala, normales, UV, PBR, jerarquía y texturas |
-| STEP | Caras y sólidos editables, tolerancias, booleanas, precisión |
-| IFC | GUID, tipos, unidades, propiedades y clasificaciones |
-| Render final | Luz, color, cámara y assets, reconociendo diferencias de motor |
+**Reporte de pérdida obligatorio** cuando se pierdan entidades, restricciones, materiales, escala, luz, animaciones o metadatos. Nunca describir como "compatibilidad total" si se redujo a mesh.
 
-**Regla:** no convertir silenciosamente un sólido o muro semántico en una malla y declarar "edición completa". Reportar qué propiedades se han perdido.
+## Controles
+- Unidades explicitadas, ejes y handedness, normales, UV, materiales, triangulación y orientación.
+- Límite de tamaño, memoria, texturas, profundidad de anidamiento y rutas relativas.
+- Archivos rotos: error manejable, sin cambiar el documento actual.
+- Fixtures con licencias compatibles y casos patológicos (mallas invertidas, jerarquías, mm/m, texturas faltantes).
+- Importación no puede hacer fetching remoto silencioso de URLs incluidas en assets.
 
-## Riesgos de seguridad y licencias
-- Bloquear carga silenciosa de archivos/URLs remotos incrustados al importar.
-- Límite de tamaño, triángulos, profundidad, texturas y consumo de memoria.
-- No usar assets privados de empresas de software sin permiso.
-- Revisar compatibilidad de licencias GPL/AGPL y excepciones de terceros antes de incluir kernels.
-- SKP/DWG: validar versiones reales; no prometer leer formatos futuros ni compatibilidad perfecta.
+## Política de compatibilidad
+Tabla pública de versiones soportadas por formato, riesgos conocidos, diffs visuales y pruebas. Considerar SKP/DWG como dependencia de bibliotecas/licencias/documentación disponibles y revisión legal antes de afirmar capacidad.

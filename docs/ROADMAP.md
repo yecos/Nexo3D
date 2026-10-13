@@ -1,6 +1,6 @@
 # Hoja de ruta basada en evidencias
 
-**Estado a 2026-10-13:** repositorio y especificaciones iniciales. **No hay ejecutable.** No fijar fechas de entrega antes de estimar capacidad y validar dependencias.
+**Estado a 2026-10-13:** documentación en main y prototipo Vite/Three.js **en revisión como PR #1**. Hay build web experimental en CI, **sin instalador desktop y sin verificación manual Linux/Windows**. No fijar fechas de entrega antes de estimar capacidad.
 
 ## Resumen de hitos
 | Hito | Resultado demostrable | Dependencias |
@@ -19,8 +19,15 @@
 - [x] Confirmación de licencia AGPL-3.0.
 - [ ] Completar evaluación **reproducible** de Hew / IngeTrazo / geometría CAD y licencias transitivas.
 - [ ] Acordar ADR de motor elegido después de prueba de concepto.
-- [ ] Crear configuración monorepo y pipeline CI mínimo; comandos se añadirán cuando exista código.
+- [x] Pipeline CI básico de tests/build en rama de prototipo (PR #1); falta comprobación manual y arquitectura monorepo definitiva.
 **Salida:** documentación y licencia publicadas, candidatos documentados; sin afirmar que exista aplicación.
+
+## Estado de implementación experimental
+- [x] Código en PR #1 para importar GLB, escena compartida, edición por transformaciones y material básico.
+- [x] CI (Linux GitHub Actions): pruebas unitarias de dominio y build Vite han pasado en el commit de implementación inicial.
+- [ ] Validar apertura y guardado con archivos GLB reales (incluyendo materiales/texturas), prueba manual offline.
+- [ ] Pruebas de escritorio Linux y Windows; definición del shell Tauri.
+- [ ] Auditoría de dependencias transitivas/lockfile y licencia en distribución.
 
 ## M1: primera escena
 - [ ] Ventana desktop y menú con Modelado/Render.

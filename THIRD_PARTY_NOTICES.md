@@ -1,15 +1,16 @@
 # Third-party notices / Avisos de terceros
 
-**Estado: sin dependencias externas importadas a este repositorio al 2026-10-13.**
+**Actualizado 2026-10-13 — prototipo en PR #1.**
 
-NEXO 3D enlaza en su documentación proyectos, estándares y herramientas existentes para evaluación; **esos enlaces no significan que su código o assets estén incorporados**.
+Este proyecto es código original AGPL-3.0-only con dependencias externas. Los paquetes se descargan desde el administrador npm; **no se han copiado archivos fuente de Hew, IngeTrazo ni aplicaciones comerciales**.
 
-En cuanto se incorpore código, SDK, fuentes, arte, HDRI, texturas, mallas o binarios de terceros, registrar:
+| Dependencia directa | Versión solicitada | Licencia indicada por upstream | Rol |
+| --- | --- | --- | --- |
+| [Three.js](https://github.com/mrdoob/three.js) | 0.180.0 | MIT | Motor de viewport WebGL y cargador glTF/GLB |
+| [Vite](https://github.com/vitejs/vite) | 7.1.12 | MIT | Servidor de desarrollo y build; dependencia de desarrollo |
 
-| Componente/asset | Versión/commit | Licencia | Autor/copyright | Ubicación | Tipo de uso | Avisos |
-| --- | --- | --- | --- | --- | --- | --- |
-| *Sin entradas aún* | — | — | — | — | — | — |
+Los textos completos y copyright de estos proyectos y sus dependencias transitivas deben conservarse según sus licencias al distribuir binarios o bundles. **Antes de la primera release** generar un inventario SBOM con versiones realmente resueltas e incluir los avisos requeridos en el artefacto final. Los enlaces y licencias anteriores describen las dependencias declaradas: esta nota no sustituye una auditoría de todos los paquetes transitivos.
 
-Se deben conservar LICENSE y NOTICE exigidos, distinguir componentes con licencias especiales y documentar obligaciones al redistribuir escritorio/web. Consultar [docs/LICENSING.md](docs/LICENSING.md).
+Otros proyectos citados solo como investigación (Hew, IngeTrazo, LibreCAD, Blender, Falcor, etc.) **no son dependencias de este PR**. Los modelos GLB importados siguen siendo responsabilidad de sus titulares, sin que NEXO obtenga derechos de redistribución.
 
-El texto GNU AGPL-3.0 incluido en `LICENSE` proviene de la licencia publicada por la Free Software Foundation y reproducida por el proyecto SPDX, sin modificaciones.
+Texto legal raíz del proyecto: [LICENSE](LICENSE) y [docs/LICENSING.md](docs/LICENSING.md).

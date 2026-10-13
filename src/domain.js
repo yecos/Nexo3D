@@ -61,6 +61,8 @@ export function validateGLB(bytes) {
     const jsonBytes = new Uint8Array(bytes, 20, jsonLength);
     json = JSON.parse(new TextDecoder().decode(jsonBytes).replace(/\\u0000+$/g, '').trim());
   } catch { throw new Error('El GLB no tiene un JSON válido.'); }
+  if (!json.asset || json.asset.version !== '2.0')
+    throw new Error('Archivo glTF 2.0 inválido.');
   // A self-contained GLB must not silently fetch external models/textures.
   for (const item of [...(json.buffers || []), ...(json.images || [])]) {
     if (item.uri && (!String(item.uri).startsWith('data:')))

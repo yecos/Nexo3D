@@ -1,45 +1,39 @@
 # NEXO 3D — Centro de documentación
 
-**Edición:** 0.1 · **Fecha:** 2026-10-13 · **Estado:** especificación preliminar, no implementación.
+**Versión de documentación:** 0.1 · **Fecha:** 2026-10-13 · **Estado:** especificación preliminar, no implementación.
 
-> **Convención de estados:** **DECIDIDO** (regla de producto), **PROPUESTO** (diseño sin PoC), **EN EVALUACIÓN** (tecnología por validar), **IMPLEMENTADO** (código probado y reproducible). Un enlace a repositorio ajeno no es una integración.
+> **Convención de estados:** **DECIDIDO** (regla de producto), **PROPUESTO** (arquitectura pendiente de prototipo), **EN EVALUACIÓN** (dependencia/decisión por validar), **IMPLEMENTADO** (solo con código y prueba verificable).
 
-## Ruta de lectura sugerida
-| Orden | Documento | Resultado |
+## Leer en este orden
+| Orden | Documento | Para qué sirve |
 | --- | --- | --- |
-| 1 | [Visión](PRODUCT_VISION.md) | Problema, usuarios, límites, propósito |
-| 2 | [Requisitos](REQUIREMENTS.md) | FR/NFR y escenarios de aceptación |
-| 3 | [Arquitectura](ARCHITECTURE.md) | Modelo compartido y capas |
-| 4 | [Formato de proyecto](PROJECT_FORMAT.md) | Identidades, unidades, schema, persistencia |
+| 1 | [Visión](PRODUCT_VISION.md) | Problema, usuarios, casos de uso, límites |
+| 2 | [Requisitos](REQUIREMENTS.md) | Qué debe hacer, prioridad, criterios de aceptación |
+| 3 | [Arquitectura](ARCHITECTURE.md) | Cómo interactúan editor, escena, motor y servicios |
+| 4 | [Modelo/archivo](PROJECT_FORMAT.md) | Identidades, unidades, persistencia y versión de proyecto |
 | 5 | [Espacios de trabajo](WORKSPACES.md) | CAD, Modelado, Render, IA Studio |
-| 6 | [Render](RENDERING.md) | Preview, render final, GPU y fallbacks |
-| 7 | [IA Studio](AI_STUDIO.md) | Imagen→3D, revisión y proveedores |
-| 8 | [Offline-first](OFFLINE_FIRST.md) | Datos locales, privacidad, sync |
-| 9 | [Interoperabilidad](INTEROPERABILITY.md) | GLB, DXF, IFC, SKP y fidelidad |
-| 10 | [Evaluación de motores](ENGINE_EVALUATION.md) | Rúbrica Hew/IngeTrazo y demás |
-| 11 | [Roadmap](ROADMAP.md) | M0–M6, criterios de salida |
-| 12 | [Guía para construir MVP](MVP_IMPLEMENTATION.md) | Tickets técnicos en orden |
-| 13 | [Estrategia de pruebas](TEST_STRATEGY.md) | Fixtures, tests, plataforma, evidencia |
-| 14 | [Desarrollo](DEVELOPMENT.md) | Convenciones y primer bootstrap |
-| 15 | [Licencias y activos](LICENSING.md) | AGPL, marcas, terceros y copyright |
-| 16 | [Gobernanza](GOVERNANCE.md) | Decisiones, roles y releases |
-| 17 | [Glosario](GLOSSARY.md) | Términos del proyecto |
-| 18 | [ADR](adr/README.md) | Decisiones arquitectónicas y motivos |
+| 6 | [Render](RENDERING.md) | Vista interactiva, renders finales, GPU y fallback |
+| 7 | [IA](AI_STUDIO.md) | Imagen a 3D, revisión humana y ejecución local/nube |
+| 8 | [Offline y nube](OFFLINE_FIRST.md) | Almacenamiento local, privacidad y futura sincronización |
+| 9 | [Interoperabilidad](INTEROPERABILITY.md) | Formatos y reglas de fidelidad |
+| 10 | [Evaluación de motores](ENGINE_EVALUATION.md) | Cómo elegir tecnología sin casarnos prematuramente |
+| 11 | [Roadmap](ROADMAP.md) | Fases y entregables con salida objetiva |
+| 12 | [Estrategia de pruebas](TEST_STRATEGY.md) | Requisitos ↔ pruebas ↔ evidencia |
+| 13 | [Desarrollo](DEVELOPMENT.md) | Organización, convenciones y proceso de bootstrap |
+| 14 | [Licencias](LICENSING.md) | AGPL, terceros, activos y marcas |
+| 15 | [Bitácora de decisiones](adr/README.md) | Por qué se tomó cada decisión |
 
-## Para colaborar
-- [Cómo contribuir](../CONTRIBUTING.md)
-- [Código de conducta](../CODE_OF_CONDUCT.md)
-- [Seguridad](../SECURITY.md)
-- [Avisos de terceros](../THIRD_PARTY_NOTICES.md)
-- [Plantilla de PR](../.github/PULL_REQUEST_TEMPLATE.md)
+## Documentación para colaborar
+- [CONTRIBUTING](../CONTRIBUTING.md) — flujo de issues, ramas, PR, revisiones.
+- [SECURITY](../SECURITY.md) — reporte responsable de vulnerabilidades.
+- [Código de conducta](../CODE_OF_CONDUCT.md).
 
-## Mantenimiento obligatorio
-1. Toda característica con ID de requisito, test o escenario y evidencia.
-2. Toda decisión de arquitectura de alto impacto con ADR.
-3. Cada dependencia nueva con licencia, commit y requisitos de distribución.
-4. Formatos y versiones nativas deben tener estrategia de migración.
-5. No decir "funciona en macOS/web" sin build y test de esa plataforma.
-6. Las revisiones de docs acompañan el cambio de código que describen.
-7. Una release necesita changelog, matriz de funcionalidades probadas y límites conocidos.
+## Reglas para mantenerla viva
+1. Cada característica nueva lleva un requisito con ID, escenario de aceptación y prueba correspondiente.
+2. Cada decisión arquitectónica de alto impacto se documenta con un ADR.
+3. Si una dependencia cambia, actualizar matriz de licencias, soporte de plataformas y plan de pruebas.
+4. No describir como existente una función aún no implementada.
+5. Cambios que afecten el modelo nativo requieren estrategia de migración.
+6. En cada release registrar funciones realmente validadas, limitaciones conocidas y evidencia.
 
-**Idioma principal: español.** Se aceptan traducciones independientes sin cambiar API ni términos técnicos originales.
+**Idioma principal:** español; nombres de APIs/estándares permanecen en inglés. Se invita a agregar traducciones con control de versiones.

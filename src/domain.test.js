@@ -8,14 +8,18 @@ import {
 
 function sampleGLB() {
   // Structurally valid GLB header with 12-byte JSON chunk (loader tests are separate).
-  const buffer = new ArrayBuffer(32);
+  const json = '{"asset":{"version":"2.0"}}';
+  const encoded = new TextEncoder().encode(json);
+  const length = Math.ceil(encoded.byteLength / 4) * 4;
+  const buffer = new ArrayBuffer(20 + length);
   const v = new DataView(buffer);
   v.setUint32(0, 0x46546c67, true);
   v.setUint32(4, 2, true);
-  v.setUint32(8, 32, true);
-  v.setUint32(12, 12, true);
+  v.setUint32(8, buffer.byteLength, true);
+  v.setUint32(12, length, true);
   v.setUint32(16, 0x4e4f534a, true);
-  new Uint8Array(buffer, 20).set(new TextEncoder().encode('{"asset":{}}'));
+  new Uint8Array(buffer, 20).fill(32);
+  new Uint8Array(buffer, 20).set(encoded);
   return buffer;
 }
 test('project schema survives offline save/read round-trip', () => {
@@ -47,7 +51,7 @@ test('a GLB can be referenced without losing binary representation', () => {
   const n = p.nodes.at(-1);
   assert.equal(n.kind, 'glb');
   assert.equal(n.name, 'Mueble');
-  assert.equal(base64ToBytes(p.assets[n.assetId].data).byteLength, 32);
+  assert.equal(base64ToBytes(p.assets[n.assetId].data).byteLength, sampleGLB().byteLength);
   const restored = parseProject(saveProject(p));
   assert.equal(restored.nodes.length, 2);
 });
