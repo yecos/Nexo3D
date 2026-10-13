@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NEXO 3D · Render en vivo</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;height:100%;background:#161b20;color:#e7e7e5;font:13px system-ui,sans-serif}
+    #scene{height:100%;width:100%;display:block;touch-action:none}
+    .hud{position:absolute;left:16px;top:16px;max-width:min(480px,90%);padding:11px 15px;background:rgba(13,20,25,.85);border:1px solid #5a626a;border-radius:9px;pointer-events:none}
+    .brand{letter-spacing:.18em;font-size:11px;color:#c0b3a2}.state{font-size:14px;line-height:1.6}.hint{color:#bdc2c5}
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-label="Vista 3D en vivo del modelo"></canvas>
+  <div class="hud" role="status" aria-live="polite">
+    <div class="brand">NEXO / RENDER LIVE</div>
+    <div id="state" class="state">Conectando con NEXO Bridge…</div>
+    <div id="cad" class="hint">CAD: esperando cambios guardados</div>
+    <div class="hint">Arrastrar: orbitar · Rueda: zoom · Botón derecho: desplazar</div>
+  </div>
+  <script type="module" src="./native-render.js"></script>
+</body>
+</html>
