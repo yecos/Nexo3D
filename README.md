@@ -30,6 +30,10 @@ El mismo objeto y sus propiedades permanecen sincronizados al cambiar de espacio
 
 El primer visor 3D se encuentra en [PR #1](https://github.com/yecos/Nexo3D/pull/1). La continuación añade un editor **CAD 2D con muros vinculados al mismo modelo**, documentado en la [guía CAD → 3D → Render](docs/CAD_2D_MVP.md). Consulta también [la guía del visor GLB](docs/PROTOTYPE.md). La rama de prototipo incluye visor 3D, importación GLB autocontenida, dos workspaces sincronizados y guardar/abrir JSON local. Aún **no equivale** a un CAD tipo AutoCAD, un modelador completo ni un renderer final tipo D5.
 
+## Motor Hew experimental — reutilización real
+
+Hay una [integración CAD → Hew → GLB/SKP → Blender](docs/HEW_FOUNDATION.md) en la rama `feat/hew-foundation-adapter`. No copiamos Hew: su CLI externa crea los sólidos a partir de los trazos de NEXO. La UI todavía utiliza Three.js y el flujo es **por lotes**, no sincronización interactiva bidireccional. [ADR-0007](docs/adr/0007-hew-foundation-spike.md).
+
 ## Primera meta (MVP)
 1. Importar un modelo GLB.
 2. Mostrarlo y transformar al menos un objeto.
