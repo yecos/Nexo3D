@@ -1,6 +1,6 @@
 [package]
 name = "nexo3d-desktop"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 description = "NEXO 3D - CAD, modelado y render en un solo escritorio"
 authors = ["NEXO 3D contributors"]
 license = "AGPL-3.0-only"
@@ -18,3 +18,4 @@ strip = true
 lto = true
 opt-level = "s"
 codegen-units = 1
+

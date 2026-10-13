@@ -9,7 +9,7 @@ function mock(){
   const messages=[];
   const listeners=new Map();
   globalThis.window={
-    location:{origin:'http://127.0.0.1:5173'},
+    location:{origin:'http://127.0.0.1:5173',href:'http://127.0.0.1:5173/'},
     addEventListener(type,fn){listeners.set(type,fn)},
     removeEventListener(type){listeners.delete(type)}
   };
@@ -181,9 +181,11 @@ test('correct local Hew manifest opens interactive editor and remains retryable'
   });
   try{
     await m.hew.init();
-    assert.equal(m.frame.src,'/hew/index.html');
+    assert.equal(m.frame.src,'http://127.0.0.1:5173/hew/index.html');
+    assert.equal(m.frame.hidden,false,'the iframe must remain navigable during WASM startup');
     assert.equal(m.hew.ready,false,'manifest is not equivalent to a working WASM scene');
     m.ready();
     assert.equal(m.hew.ready,true);
   } finally {globalThis.fetch=previous;m.hew.dispose();}
 });
+

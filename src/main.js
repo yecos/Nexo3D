@@ -195,7 +195,9 @@ function refresh() {
     else {
       el('hew-loading').hidden = false;
       el('hew-missing').hidden = true;
-      el('hew-frame').hidden = true;
+      // Keep the iframe navigable while the overlay explains the startup.
+      // Hiding a lazy iframe can prevent WebView2 from loading Hew at all.
+      el('hew-frame').hidden = false;
       void hew.init().catch(error => displayHewUnavailable(error.message));
     }
   }
@@ -401,3 +403,4 @@ document.addEventListener('keydown', e => {
 });
 refresh();
 status('CAD 2D listo. Dibuja líneas y levántalas como muros para verlas en Modelado y Render.');
+

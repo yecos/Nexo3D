@@ -17,14 +17,18 @@ export class HewWorkspace {
     this.loading=null;
     this.startupTimer=null;
     this.origin=window.location.origin;
+    this.baseUrl=new URL('./',window.location.href);
     this.onMessage=this.onMessage.bind(this);
     window.addEventListener('message',this.onMessage);
     frame.addEventListener('load',()=>this.ping());
   }
+  resourceUrl(path){
+    return new URL(path,this.baseUrl).toString();
+  }
   async init(){
     if (this.started) return this.started;
     this.started=(async()=>{
-      const response=await fetch('/hew/nexo-manifest.json',{
+      const response=await fetch(this.resourceUrl('hew/nexo-manifest.json'),{
         cache:'no-store',headers:{Accept:'application/json'}
       });
       if(!response.ok || !response.headers.get('content-type')?.toLowerCase().includes('application/json'))
@@ -34,7 +38,11 @@ export class HewWorkspace {
       catch { throw Error('El manifiesto local de Hew está dañado. Ejecuta npm run hew:setup.'); }
       if(manifest.integration!=='nexo-hew' || manifest.protocol!==1)
         throw Error('Esta compilación de Hew no contiene el enlace NEXO.');
-      this.frame.src='/hew/index.html';
+      // WebView2 may defer hidden/lazy iframes indefinitely. Start the local
+      // document before showing the loading overlay so the WASM runtime gets a
+      // real navigation on both Vite and Tauri's tauri.localhost protocol.
+      this.frame.hidden=false;
+      this.frame.src=this.resourceUrl('hew/index.html');
       this.onStatus('Iniciando el modelador Hew (WebAssembly local)…');
       clearTimeout(this.startupTimer);
       this.startupTimer=setTimeout(()=>{
@@ -189,3 +197,4 @@ export class HewWorkspace {
     this.loading=null;
   }
 }
+
