@@ -1,6 +1,6 @@
 {
   "name": "nexo3d",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
@@ -11,13 +11,18 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test src/*.test.js",
     "hew:setup": "node scripts/setup-hew-web.mjs",
-    "hew:patch": "node scripts/patch-hew-web.mjs upstream-hew --patch-only"
+    "hew:patch": "node scripts/patch-hew-web.mjs upstream-hew --patch-only",
+    "desktop:dev": "npm run desktop:icons && tauri dev",
+    "desktop:icons": "node scripts/make-app-icon.mjs && tauri icon src-tauri/icon-source.png --output src-tauri/icons",
+    "desktop:build": "tauri build",
+    "desktop:package": "npm run desktop:icons && npm run build && tauri build"
   },
   "dependencies": {
     "three": "0.180.0"
   },
   "devDependencies": {
-    "vite": "7.1.12"
+    "vite": "7.1.12",
+    "@tauri-apps/cli": "2.12.2"
   },
   "engines": {
     "node": ">=22"
