@@ -1,40 +1,36 @@
-# NEXO 3D · Integración nativa IngeCAD / IngeTrazo (Windows)
+# NEXO 3D · CAD → Modelado → Render (Windows experimental)
 
-**Prueba técnica, no nuevo NEXO estable.** Conserva la app Tauri existente; este proyecto compara una base Qt alternativa para CAD/Modelado. No afecta `main`, archivos del usuario ni versiones publicadas.
+**No sustituye NEXO estable.** Conserva los ejecutables originales de IngeCAD e IngeTrazo en procesos independientes, alojados dentro de una ventana Qt con tres pestañas. Aún necesita validación en un PC Windows real.
 
-## Qué hace
-- Una ventana NEXO con dos espacios, CAD 2D y Modelado 3D.
-- Inicia los **ejecutables originales** de IngeCAD e IngeTrazo en procesos separados y aloja las ventanas mediante la API Win32 `SetParent`. Conserva barras, comandos CAD y herramientas de modelado existentes.
-- Un dibujo elegido en NEXO abre en CAD, y el mismo DWG/DXF se importa en una nueva sesión de IngeTrazo (revisar escalas). **Guardar en CAD primero**. Un dibujo modificado en CAD no se sincroniza automáticamente con IngeTrazo.
-- Al cerrar NEXO intenta devolver las ventanas al escritorio sin terminar los programas ni descartar cambios.
+## Qué implementa NEXO Bridge
 
-## Descarga de prueba
-Workflow [NEXO native CAD + modeling PoC](../../.github/workflows/native-cad-modeling-poc.yml). En una ejecución exitosa, descargar el artifact `NEXO-Native-CAD-Modelado-Windows-PoC`, descomprimirlo y ejecutar `NEXO-CAD-Modelado-PoC.exe`. **Requiere los ejecutables de IngeCAD e IngeTrazo instalados por separado.**
+- **CAD → Modelado (tras guardar):** la extensión opcional de IngeTrazo revisa cambios del archivo DXF, valida unidades y sustituye solamente los grupos CAD enlazados como referencia bloqueada. Los sólidos y grupos modelados a mano no se eliminan. El plano es una referencia para dibujar o calcar y posteriormente extruir; no se reconstruyen los sólidos automáticamente al mover una línea.
+- **Modelado → Render:** tras cada edición, la extensión espera brevemente y exporta GLB en una ruta temporal mediante reemplazo atómico. NEXO Bridge detecta revisiones validadas por SHA-256 y un visor Three.js en la pestaña Render recarga el GLB sin exportación manual.
+- **No es bidireccional:** todavía no convierte sólidos 3D de regreso a CAD, ni usa un documento geométrico canónico compartido. IngeCAD guarda DWG/DXF e IngeTrazo guarda IGZ por separado.
+- La pestaña Render es una **previsualización 3D de materiales y luz**, todavía no un render fotorrealista definitivo.
+- Servidor solo de lectura en 127.0.0.1, que publica exclusivamente estado, previsualización GLB y recursos web; no expone documentos CAD.
 
-- [IngeCAD releases](https://github.com/ingelibre/ingecad/releases/latest)
-- [IngeTrazo releases](https://github.com/ingelibre/ingetrazo/releases/latest)
+## Instrucciones para probar
 
-En la barra superior elegir las rutas de ambos `.exe`. Abrir un `.dxf` (recomendado inicialmente), CAD 2D, guardar y pulsar **Enviar plano a Modelado**. En IngeTrazo comprobar la importación, unidades, cierre de contornos y Push/Pull. No se modifica el archivo CAD original al extruir.
+1. Descarga el artefacto **NEXO-Bridge-CAD-Modelado-Render-Windows-PoC** de una ejecución exitosa del [workflow Windows](../../.github/workflows/native-cad-modeling-poc.yml). Instala por separado [IngeCAD](https://github.com/ingelibre/ingecad/releases) e [IngeTrazo](https://github.com/ingelibre/ingetrazo/releases).
+2. Abre NEXO y selecciona IngeCAD.exe e IngeTrazo.exe. Pulsa **Instalar extensión NEXO**. La acción explícita guarda un único archivo en %APPDATA%/ingetrazo/plugins; nunca sobrescribe una extensión modificada por el usuario.
+3. Pulsa **Abrir DWG / DXF** y elige un **DXF con unidades definidas**. Si trabajas con DWG, abre el DWG en CAD, guarda una copia DXF y selecciónala desde NEXO para el vínculo automático. El puente no convierte DWG en vivo.
+4. En CAD dibuja y **guarda en ese mismo DXF**. En Modelado abre IngeTrazo desde NEXO: con la extensión instalada, comienza en blanco y carga la referencia CAD. Traza o copia geometría independiente para crear caras y usar Push/Pull.
+5. **Guarda tu documento IGZ desde IngeTrazo**. La pestaña **Render Live** muestra el modelo GLB y se actualiza al editar geometría y materiales.
+6. Antes de cambiar a otro plano, guarda tu IGZ y cierra IngeTrazo manualmente. La ruta DXF queda fijada al inicio del proceso para evitar cambiar referencias a mitad de una edición.
 
-Alternativa para desarrollar en Windows (Python >= 3.11): `py -m pip install PySide6`, después `py nexo_shell.py`.
+La extensión se activa únicamente cuando NEXO lanza IngeTrazo con NEXO_BRIDGE_GLB. Sin extensión instalada, IngeTrazo abre normalmente, con importaciones manuales. NEXO no modifica ni sobrescribe archivos IGZ. El visor Render integrado usa QtWebEngine cuando está disponible y ofrece abrir el visor en el navegador como alternativa.
 
-## Pruebas automáticas
-`python -m unittest discover -s experiments/qt-unified-shell -p "test_*.py" -v`
+## Validación técnica
 
-Se prueban selección segura de archivos y argumentos; el empaquetado Windows es automático. **No hay todavía validación visual ni garantía de alojamiento OpenGL**: la GPU, políticas de DPI, diálogos y algunos ejecutables que arrancan procesos secundarios pueden impedir `SetParent` o bloquear el foco. Debe verificarse en PC real. Si falla, la alternativa es una integración Qt nativa de código fuente con módulos aislados, no una ventana externa reparentada.
+Pruebas Python: python -m unittest discover -s experiments/qt-unified-shell -p "test_*.py" -v
 
-## Límites
-- Los documentos siguen independientes: IngeCAD administra DWG/DXF; IngeTrazo administra IGZ. No existe geometría canónica unificada ni ida y vuelta de sólidos al plano.
-- Reabrir un mismo dibujo no sobrescribe una sesión de modelado abierta.
-- Solo Windows: SetParent **no** es una solución multiplataforma.
-- Se necesita revisión de licencias GPL-3.0-or-later de ambos editores frente a AGPL de NEXO y atribuciones si se distribuyen juntos. Este artefacto **no empaqueta sus binarios**.
-- No actualizar dependencias de proveedores silenciosamente; usar releases verificadas, fijar versiones, pruebas y autorización.
+Compilar visor offline: npm install && npx vite build --config experiments/qt-unified-shell/vite.render.config.mjs
 
-## Criterios de aceptación para la siguiente etapa
-1. IngeCAD abre DWG/DXF y conserva barra de comandos, capas, cotas, guardar y OSNAP.
-2. IngeTrazo muestra el dibujo como aristas, permite crear cara y extruir, y guarda IGZ.
-3. Cambiar de pestaña >= 10 veces sin perder menús, render OpenGL ni entradas de ratón/teclado.
-4. NEXO cierra sin matar una edición sin guardar, y las ventanas externas siguen accesibles.
-5. Diseñar un puente con IDs, unidades, capas, origen y revisión, no solo "reimportar DXF".
+Ejecutar desde fuente en Windows: instalar PySide6==6.9.3 y ejecutar python experiments/qt-unified-shell/nexo_shell.py; la carpeta dist-render tiene que estar compilada.
 
-Fuentes: https://github.com/ingelibre/ingecad y https://github.com/ingelibre/ingetrazo. Proyectos independientes; NEXO no está afiliado a los autores.
+**Aún pendiente de probar físicamente:** alojamiento Win32 con OpenGL, foco, menús, DPI, carga de la extensión en IngeTrazo y previsualización WebEngine real. El sistema todavía no está validado para proyectos productivos. La API de plugins de IngeTrazo está en evolución (versiones 0.x).
+
+**Licencias:** NEXO usa AGPL-3.0-only. Antes de redistribuir binarios o código combinado, revisar licencias y atribuciones de IngeCAD e IngeTrazo. Estos ejecutables de terceros no van empaquetados con NEXO.
+
+La [PR #14](https://github.com/yecos/Nexo3D/pull/14) sigue siendo el prototipo anterior solo de alojamiento nativo y pase manual de DXF.
