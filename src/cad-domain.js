@@ -74,7 +74,8 @@ export function validateCad(cad) {
       (s.kind === 'rectangle' && s.points.length !== 4) ||
       s.points.some(p => !Array.isArray(p) || p.length !== 2 ||
         p.some(v => !finite(v) || Math.abs(v) > 100000)) ||
-      segmentPairs(s).length < 1) throw new Error('Trazo CAD inválido.');
+      segmentPairs(s).length !== (s.kind === 'rectangle' ? s.points.length : s.points.length - 1))
+      throw new Error('Trazo CAD inválido.');
     if (s.extrusion != null) {
       if (!finite(s.extrusion.height) || !finite(s.extrusion.thickness) ||
         s.extrusion.height < 0.1 || s.extrusion.height > 20 ||
