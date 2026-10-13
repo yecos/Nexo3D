@@ -62,7 +62,7 @@ test('CAD: proyectos v1 migran a esquema v3 con CAD vacío y Hew opcional', () =
   delete project.cad;
   project.schemaVersion=1;
   const migrated=parseProject(JSON.stringify(project));
-  assert.equal(migrated.schemaVersion,2);
+  assert.equal(migrated.schemaVersion,3);
   assert.deepEqual(migrated.cad.shapes,[]);
 });
 test('CAD: no acepta entidades malformadas ni parámetros peligrosos', () => {
