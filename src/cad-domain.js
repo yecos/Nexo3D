@@ -47,7 +47,7 @@ export function wallSegments(shape) {
   if (!shape.extrusion) return [];
   const { height, thickness } = shape.extrusion;
   return segmentPairs(shape).map(([a,b]) => ({
-    center: [(a[0] + b[0]) / 2, height / 2, -(a[1] + b[1]) / 2],
+    center: [(a[0] + b[0]) / 2, height / 2, (a[1] + b[1]) === 0 ? 0 : -(a[1] + b[1]) / 2],
     size: [distance(a,b), height, thickness],
     rotationY: Math.atan2(b[1] - a[1], b[0] - a[0])
   }));
