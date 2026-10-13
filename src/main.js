@@ -67,6 +67,17 @@ const viewer = new Viewer(el('viewport'), id => {
   }, 'Transformación registrada.');
 });
 viewer.onLoadError = e => status('No se pudo interpretar el modelo: ' + e.message, true);
+function displayHewUnavailable(message){
+  el('hew-error-detail').textContent=message;
+  el('hew-loading').hidden=true;
+  el('hew-missing').hidden=false;
+  el('hew-frame').hidden=true;
+}
+function displayHewReady(){
+  el('hew-loading').hidden=true;
+  el('hew-missing').hidden=true;
+  el('hew-frame').hidden=false;
+}
 const hew = new HewWorkspace(el('hew-frame'), () => project, buffer => {
   try {
     validateGLB(buffer);
@@ -81,6 +92,10 @@ const hew = new HewWorkspace(el('hew-frame'), () => project, buffer => {
 }, (text, error = false) => {
   el('hew-state').textContent = text;
   status(text, error);
+  if (workspace === 'model') {
+    if (error) displayHewUnavailable(text);
+    else if (hew.ready) displayHewReady();
+  }
 });
 const cad = new CADWorkspace(
   el('cad-surface'), el('cad-tools'), el('cad-controls'), el('cad-layers'),
@@ -175,12 +190,15 @@ function refresh() {
   viewer.setSelection(selectedId);
   void viewer.sync(project);
   if (workspace === 'render') viewer.resize();
-  if (isHew) void hew.init().then(() => {
-    el('hew-missing').hidden = true;
-  }).catch(() => {
-    el('hew-missing').hidden = false;
-    el('hew-frame').hidden = true;
-  });
+  if (isHew) {
+    if (hew.ready) displayHewReady();
+    else {
+      el('hew-loading').hidden = false;
+      el('hew-missing').hidden = true;
+      el('hew-frame').hidden = true;
+      void hew.init().catch(error => displayHewUnavailable(error.message));
+    }
+  }
 }
 el('scene-list').addEventListener('click', event => {
   const button = event.target.closest('button[data-id]');
@@ -203,6 +221,12 @@ el('hew-send-cad').addEventListener('click', async () => {
   try { await hew.syncCad(); }
   catch(error){ status('Hew rechazó el plano: ' + error.message,true); }
   finally { button.disabled = false; }
+});
+el('hew-retry').addEventListener('click', () => {
+  hew.started = null;
+  hew.ready = false;
+  el('hew-error-detail').textContent = 'Comprobando la instalación local…';
+  refresh();
 });
 el('hew-to-render').addEventListener('click', async () => {
   const button = el('hew-to-render');
