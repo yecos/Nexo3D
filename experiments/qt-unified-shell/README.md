@@ -21,6 +21,26 @@
 
 La extensión se activa únicamente cuando NEXO lanza IngeTrazo con NEXO_BRIDGE_GLB. Sin extensión instalada, IngeTrazo abre normalmente, con importaciones manuales. NEXO no modifica ni sobrescribe archivos IGZ. El visor Render integrado usa QtWebEngine cuando está disponible y ofrece abrir el visor en el navegador como alternativa.
 
+## Revisión de cambios por capas (experimental)
+
+El botón **Cambios CAD** compara el DXF guardado contra la versión anterior
+detectada dentro de la misma sesión de NEXO. Muestra capas nuevas, eliminadas
+y modificadas. La lectura se realiza en un hilo independiente y no escribe en
+el dibujo ni en el modelo 3D. Incluye las coordenadas de líneas, atributos
+geométricos comunes y vértices de polilíneas al comparar; ignora cambios de
+handles CAD para evitar falsos positivos al volver a guardar.
+
+La primera lectura establece la referencia: para comparar dos cambios,
+guarda el plano y luego edítalo y vuelve a guardar. El informe **NO indica
+que NEXO haya movido automáticamente los muros 3D**. Son referencias CAD
+actualizables y el reporte avisa dónde hay modificaciones que revisar.
+
+Limitaciones: DXF únicamente, no DWG directo; las entidades DXF especiales
+o personalizadas (por ejemplo detalles interiores de algunas tramas HATCH
+o definiciones de bloques) pueden requerir una revisión visual. En desarrollo
+local, además de PySide6, instalar la biblioteca ezdxf. En el ejecutable
+Windows esta dependencia se empaqueta con NEXO.
+
 ## Validación técnica
 
 Pruebas Python: python -m unittest discover -s experiments/qt-unified-shell -p "test_*.py" -v
