@@ -6,6 +6,7 @@ import {
 } from './domain.js';
 import { Viewer } from './viewer.js';
 import { CADWorkspace } from './cad-ui.js';
+import { validateCad } from './cad-domain.js';
 
 const el = id => document.getElementById(id);
 const escaped = value => String(value).replace(/[&<>"']/g, c => ({
@@ -33,10 +34,17 @@ function changed(next, message) {
   if (message) status(message);
 }
 function update(mutator, message) {
-  remember();
   const next = cloneForEdit(project);
-  mutator(next);
+  try {
+    mutator(next);
+    validateCad(next.cad);
+  } catch (error) {
+    status('No se aplicó el cambio: ' + error.message, true);
+    return false;
+  }
+  remember();
   changed(next, message);
+  return true;
 }
 function nodeById() {
   return project.nodes.find(node => node.id === selectedId);
