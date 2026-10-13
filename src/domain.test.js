@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   makeProject, cloneForEdit, makeBox, saveProject, parseProject,
-  validateGLB, addGLB, base64ToBytes, MAX_GLB_BYTES
+  validateGLB, addGLB, base64ToBytes, MAX_GLB_BYTES, withHewDocument, getHewDocument,
+  MAX_HEW_BYTES, MAX_PROJECT_BYTES
 } from './domain.js';
 
 function sampleGLB() {
@@ -60,4 +61,57 @@ test('reject malformed external documents', () => {
   const p = makeProject();
   p.nodes.push({ ...makeBox(), id: p.nodes[0].id });
   assert.throws(() => saveProject(p), /repetido/);
+});
+
+test('schema v3 packs native editable Hew ZIP, CAD, GLB and render into one document', () => {
+  const p = addGLB(makeProject(), 'Render GLB', sampleGLB());
+  p.cad.shapes = [];
+  p.render.sunIntensity = 4;
+  const zip = new ArrayBuffer(160);
+  const bytes = new Uint8Array(zip);
+  bytes.set([0x50, 0x4b, 0x03, 0x04]);
+  bytes[159] = 99;
+  const bundled = withHewDocument(p, zip, ['obj_1','obj_7']);
+  assert.equal(bundled.schemaVersion, 3);
+  assert.equal(bundled.hew.format, 'hew');
+  assert.deepEqual(bundled.hew.generatedIds, ['obj_1','obj_7']);
+  const serialized = saveProject(bundled);
+  const again = parseProject(serialized);
+  assert.deepEqual(new Uint8Array(getHewDocument(again)), bytes);
+  assert.deepEqual(again.cad,p.cad);
+  assert.deepEqual(again.render,p.render);
+  assert.deepEqual(again.nodes,p.nodes);
+  assert.deepEqual(again.assets,p.assets);
+  assert.equal(p.hew,null,'capture never mutates original');
+});
+test('v1 and v2 NEXO projects migrate to schema v3 without losing content', () => {
+  const p=makeProject();
+  const v2={...p,schemaVersion:2};
+  delete v2.hew;
+  const openedV2=parseProject(JSON.stringify(v2));
+  assert.equal(openedV2.schemaVersion,3);
+  assert.equal(openedV2.hew,null);
+  assert.deepEqual(openedV2.nodes,p.nodes);
+  const v1={...v2,schemaVersion:1};
+  delete v1.cad;
+  const openedV1=parseProject(JSON.stringify(v1));
+  assert.equal(openedV1.schemaVersion,3);
+  assert.equal(openedV1.cad.shapes.length,0);
+  assert.equal(openedV1.hew,null);
+});
+test('native Hew data fails closed for damaged, oversized or noncanonical data', () => {
+  const p=makeProject();
+  assert.throws(()=>withHewDocument(p,new ArrayBuffer(2)),/vacío/);
+  assert.throws(()=>withHewDocument(p,new ArrayBuffer(MAX_HEW_BYTES+1)),/30 MB/);
+  assert.throws(()=>withHewDocument(p,new ArrayBuffer(100)),/ZIP/);
+  const zip = new Uint8Array(40);
+  zip.set([0x50,0x4b,0x03,0x04]);
+  const valid=withHewDocument(p,zip.buffer,['obj_4']);
+  const malformed=structuredClone(valid);
+  malformed.hew.data='%%%';
+  assert.throws(()=>saveProject(malformed),/Hew/);
+  const invalidId=structuredClone(valid);
+  invalidId.hew.generatedIds=['../../evil'];
+  assert.throws(()=>saveProject(invalidId),/Hew/);
+  assert(MAX_PROJECT_BYTES>=MAX_HEW_BYTES);
 });
