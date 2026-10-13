@@ -1,0 +1,62 @@
+name: IngeCAD actual DWG document round-trip
+on:
+  push:
+    branches: [spike/dwg-real-roundtrip]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ingecad-dwg-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  libre-dwg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: System dependencies for the GNU LibreDWG build and Qt
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake ninja-build build-essential pkg-config zlib1g-dev libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0
+      - name: Clone upstream IngeCAD and GNU LibreDWG 0.14 (pinned)
+        run: |
+          git clone --filter=blob:none https://github.com/ingelibre/ingecad.git upstream-ingecad
+          git -C upstream-ingecad checkout 27cfce77340cec5c418032c13986a462b492da3a
+          git clone --filter=blob:none https://github.com/LibreDWG/libredwg.git upstream-libredwg
+          git -C upstream-libredwg checkout d9468ae948b8f07a08efa756c19f8916052358c0
+          git -C upstream-ingecad rev-parse HEAD
+          git -C upstream-libredwg rev-parse HEAD
+      - name: Build actual GPL LibreDWG converter tools
+        run: |
+          cmake -S upstream-libredwg -B upstream-libredwg/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DDISABLE_WERROR=ON -DENABLE_LTO=OFF
+          cmake --build upstream-libredwg/build --parallel 2 --target dwg2dxf dxf2dwg
+          find upstream-libredwg/build -type f \( -name dwg2dxf -o -name dxf2dwg \)
+      - name: Install IngeCAD requirements
+        run: |
+          python -m pip install -r upstream-ingecad/requirements.txt
+          python -m pip install 'PySide6>=6.7,<6.12'
+      - name: Run real DWG file conversion, comparison, and upstream converter tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOL_DIR=$(dirname "$(find "$PWD/upstream-libredwg/build" -type f -name dwg2dxf | head -n1)")
+          if [ -z "$TOOL_DIR" ]; then echo 'DWG converter not built'; exit 1; fi
+          export PATH="$TOOL_DIR:$PATH"
+          which dwg2dxf
+          which dxf2dwg
+          python tests/dwg-real/probe.py upstream-ingecad/tests/data/angular_2l_oda.dwg | tee dwg-probe.log
+          cd upstream-ingecad
+          python -m pytest -q tests/test_dwg_bridge.py::test_dxf_dwg_dxf_roundtrip tests/test_dwg_bridge.py::test_accented_paths_survive
+      - name: Upload counts and converter evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dwg-real-smoke-results
+          path: dwg-probe.log
+          retention-days: 7
+          if-no-files-found: warn
