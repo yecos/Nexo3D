@@ -1,6 +1,6 @@
 # Arquitectura de render y calidad visual
 
-**Estado:** propuesta. **No hay renderizador integrado**. Objetivo: experiencia visual arquitectónica comparable en funciones, sin copiar código/recursos de D5.
+**Estado (2026-10-13):** existe un viewport Three.js PBR en la rama experimental y un nuevo **Render Studio R1** (rama `feat/render-studio-realtime`) con luz solar configurable, sombras, exposición, calidad GPU, color de entorno/suelo y oclusión ambiental GTAO. La exportación Hew→Blender/Cycles está probada mediante CLI y el resultado final **no está conectado aún como botón en Render**. No es GI física/Lumen ni reemplazo de D5.
 
 ## Dos niveles separados
 1. **Viewport interactivo**: navegar, ver materiales, luces y selección con baja latencia.
@@ -56,3 +56,20 @@ R-04 HDRI ausente/error no pierde sesión.
 R-05 cancelación y timeout dejan proceso limpiado.
 R-06 render offline (red desactivada) sobre fixture mínimo.
 R-07 prueba de rendimiento con scene set público y licencia compatible.
+
+## R1 implementado como código (pruebas aún necesarias)
+
+- Tres perfiles de GPU: Rápida, Equilibrada y Estudio. Los presets ajustan límite de densidad de píxeles, resolución del mapa de sombras y muestras de GTAO.
+- Dirección e intensidad solar (azimut/elevación), ambientación, exposición de cámara, entorno y color del suelo. Los sliders previsualizan en el momento y se guardan en `render` del archivo NEXO.
+- Sombras proyectadas y GTAO activable con el **postprocesado incluido en Three.js r180**, sin introducir un motor comercial.
+- Cuando existe un GLB íntegro de Hew, no se añaden otra vez los muros derivados de CAD a Render: se evita duplicación/z-fighting. Si aún no hay GLB Hew, Render continúa mostrando los muros CAD generados a partir de trazos.
+- Render solo consume GPU en su espacio activo, evitando mantener el bucle 3D del visor cuando se dibuja en CAD.
+- Compatibilidad del proyecto v3: archivos antiguos que no poseen ajustes R1 toman valores predeterminados al abrir. Los campos nuevos se validan y se guardan.
+
+**No implementado:** Lumen, path tracing en viewport, GI indirecta físicamente correcta, reflejos RTX, HDRI, cielos atmosféricos, Render final desde botón, imagen 4K, vídeo, iluminación con fotometría IES. `GTAO` es oclusión ambiental **screen-space**, no cálculo de iluminación global.
+
+**Legal (fuentes oficiales, a octubre 2026):** D5 documenta un motor propio de path tracing; su documentación previa se refería a Unreal. La EULA de Unreal prohíbe combinaciones de código que impliquen relicenciar el motor bajo GPL/AGPL. Por ello Unreal/Lumen **no se agrega como dependencia** de NEXO AGPL; se puede estudiar como referencia o como herramienta externa independiente con revisión de licencias previa.
+
+- https://www.d5render.com/posts/d5-engine-real-time-rendering-architectural-visualization
+- https://www.unrealengine.com/eula/unreal
+- https://github.com/mrdoob/three.js/tree/r180/examples/jsm/postprocessing
