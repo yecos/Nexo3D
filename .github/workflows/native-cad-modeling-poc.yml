@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - spike/ingecad-ingetrazo-native-shell
+      - feat/nexo-bridge-cad-model-render
     paths:
       - 'experiments/qt-unified-shell/**'
       - '.github/workflows/native-cad-modeling-poc.yml'
@@ -35,6 +36,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build bundled offline Render viewer
+        shell: pwsh
+        run: |
+          npm install --ignore-scripts --no-package-lock
+          npx vite build --config experiments/qt-unified-shell/vite.render.config.mjs
+          if (!(Test-Path experiments/qt-unified-shell/dist-render/index.html)) { throw "Missing offline Render HTML" }
       - name: Install build dependencies
         run: python -m pip install --disable-pip-version-check PySide6==6.9.3 pyinstaller==6.16.0
       - name: Validate source
@@ -45,11 +55,11 @@ jobs:
         shell: pwsh
         run: |
           cd experiments/qt-unified-shell
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name NEXO-CAD-Modelado-PoC nexo_shell.py
-          if (!(Test-Path dist/NEXO-CAD-Modelado-PoC.exe)) { throw "Missing PoC executable" }
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name NEXO-Bridge-CAD-Modelado-Render-PoC --add-data "plugins/nexo_live_bridge.py;plugins" --add-data "dist-render;render_web" nexo_shell.py
+          if (!(Test-Path dist/NEXO-Bridge-CAD-Modelado-Render-PoC.exe)) { throw "Missing PoC executable" }
       - uses: actions/upload-artifact@v4
         with:
-          name: NEXO-Native-CAD-Modelado-Windows-PoC
-          path: experiments/qt-unified-shell/dist/NEXO-CAD-Modelado-PoC.exe
+          name: NEXO-Bridge-CAD-Modelado-Render-Windows-PoC
+          path: experiments/qt-unified-shell/dist/NEXO-Bridge-CAD-Modelado-Render-PoC.exe
           retention-days: 14
           if-no-files-found: error
