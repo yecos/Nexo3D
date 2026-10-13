@@ -39,21 +39,21 @@ async function save(){
 try{
   await page.goto('http://127.0.0.1:4173',{waitUntil:'domcontentloaded'});
   await page.locator('#project-file').setInputFiles(fixture);
-  await page.locator('#status').getByText('Proyecto antiguo migrado',{exact:false}).waitFor();
+  await page.locator('#status').filter({hasText:'Proyecto antiguo migrado'}).waitFor();
   await page.locator('[data-workspace="model"]').click();
-  await page.locator('#hew-state').getByText(/Hew listo|Escena Hew limpiada|Modelo Hew editable recuperado/).waitFor({timeout:120000});
+  await page.locator('#hew-state').filter({hasText:/Hew listo|Escena Hew limpiada|Modelo Hew editable recuperado/}).waitFor({timeout:120000});
   await page.locator('#hew-send-cad').click();
-  await page.locator('#hew-state').getByText(/Plano CAD enviado a Hew: 4 muros/).waitFor({timeout:90000});
+  await page.locator('#hew-state').filter({hasText:/Plano CAD enviado a Hew: 4 muros/}).waitFor({timeout:90000});
   await page.locator('#hew-to-render').click();
-  await page.locator('#hew-state').getByText(/Modelo Hew exportado localmente/).waitFor({timeout:90000});
+  await page.locator('#hew-state').filter({hasText:/Modelo Hew exportado localmente/}).waitFor({timeout:90000});
   const saved=await save();
   console.log('SAVE 1:',saved.project.name, 'HEW ZIP bytes=',Buffer.from(saved.project.hew.data,'base64').length);
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('#new-project').click();
-  await page.locator('#status').getByText('Nuevo proyecto CAD + Hew preparado',{exact:false}).waitFor();
+  await page.locator('#status').filter({hasText:'Nuevo proyecto CAD + Hew preparado'}).waitFor();
   await page.locator('#project-file').setInputFiles(await saved.download.path());
-  await page.locator('#status').getByText(/Proyecto CAD \+ Hew editable recuperado/).waitFor();
-  await page.locator('#hew-state').getByText(/Modelo Hew editable recuperado/).waitFor({timeout:90000});
+  await page.locator('#status').filter({hasText:/Proyecto CAD \+ Hew editable recuperado/).waitFor();
+  await page.locator('#hew-state').filter({hasText:/Modelo Hew editable recuperado/}).waitFor({timeout:90000});
   const savedAgain=await save();
   assert.equal(savedAgain.project.id,saved.project.id,'project identity survives');
   assert.deepEqual(savedAgain.project.cad,saved.project.cad,'editable CAD survives');

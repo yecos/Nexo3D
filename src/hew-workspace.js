@@ -128,6 +128,8 @@ export class HewWorkspace {
   }
 
   async syncCad(){
+    if (this.loading) await this.loading;
+    if (this.pendingProject) await this.loadProject(this.pendingProject);
     const {script,manifest}=buildHewCommands(this.getProject());
     const replace=this.generatedIds.map(id=>({
       method:'hew.entity.delete',params:{id}
