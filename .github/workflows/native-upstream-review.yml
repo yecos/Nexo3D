@@ -1,0 +1,59 @@
+name: Review IngeCAD and IngeTrazo releases
+
+on:
+  push:
+    branches:
+      - spike/ingecad-ingetrazo-native-shell
+    paths:
+      - 'experiments/qt-unified-shell/upstream*'
+      - 'experiments/qt-unified-shell/test_upstream_watch.py'
+      - '.github/workflows/native-upstream-review.yml'
+  schedule:
+    # Only starts running on schedule once merged into the default branch.
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  upstream-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test updater safely without network
+        run: python -m unittest discover -s experiments/qt-unified-shell -p "test_*.py" -v
+      - name: Fetch latest stable releases (does NOT install anything)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python experiments/qt-unified-shell/upstream_watch.py --report upstream-report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inge-upstream-review
+          path: upstream-report.json
+          retention-days: 14
+      - name: Propose an issue for changed versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          python - <<'PY' > candidates.tsv
+          import json
+          for row in json.load(open("upstream-report.json", encoding="utf-8")):
+              if row["changed"]:
+                  title = f"upstream: review {row['name']} {row['latest']}"
+                  print(f"{title}\t{row['release_url']}\t{row['pinned']}")
+          PY
+          while IFS=$'\t' read -r title release prior; do
+            [ -n "$title" ] || continue
+            if gh issue list --state all --limit 300 --json title --jq '.[].title' | grep -Fxq "$title"; then
+              echo "Already tracked: $title"
+            else
+              gh issue create --title "$title" --body "Revisar versión aguas arriba: $release (versión fijada: $prior). No actualizar automáticamente; verificar licencia, API y puente CAD/3D, y ejecutar pruebas en Windows antes de integrar."
+            fi
+          done < candidates.tsv
