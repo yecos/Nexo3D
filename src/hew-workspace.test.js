@@ -157,3 +157,33 @@ test('no editor available preserves native bundle without data loss on save',asy
   assert.deepEqual(captured.hew.generatedIds,['obj_42']);
   m.hew.dispose();
 });
+
+test('missing Hew manifest returned as Vite HTML fallback shows actionable error',async()=>{
+  const m=mock();
+  const previous=globalThis.fetch;
+  globalThis.fetch=async ()=>({
+    ok:true,status:200,headers:{get:()=> 'text/html; charset=UTF-8'},
+    json:async()=>{throw new SyntaxError("Unexpected token '<'");}
+  });
+  try {
+    await assert.rejects(m.hew.init(),/Faltan los archivos locales de Hew/);
+    assert.equal(m.hew.started,null,'failed installation can be retried');
+    assert(m.updates.some(v=>Array.isArray(v)&&v[1]===true));
+    assert.equal(m.frame.src,'','do not open a missing editor');
+  } finally {globalThis.fetch=previous;m.hew.dispose();}
+});
+test('correct local Hew manifest opens interactive editor and remains retryable',async()=>{
+  const m=mock();
+  const previous=globalThis.fetch;
+  globalThis.fetch=async()=>({
+    ok:true,headers:{get:()=> 'application/json; charset=utf-8'},
+    json:async()=>({integration:'nexo-hew',protocol:1})
+  });
+  try{
+    await m.hew.init();
+    assert.equal(m.frame.src,'/hew/index.html');
+    assert.equal(m.hew.ready,false,'manifest is not equivalent to a working WASM scene');
+    m.ready();
+    assert.equal(m.hew.ready,true);
+  } finally {globalThis.fetch=previous;m.hew.dispose();}
+});
