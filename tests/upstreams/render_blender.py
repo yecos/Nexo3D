@@ -42,6 +42,13 @@ scene = bpy.context.scene
 scene.world = world
 scene.render.engine = "CYCLES"
 scene.cycles.samples = 8
+# Ubuntu's Blender package may not be built with OpenImageDenoiser.
+# A proof of a Cycles image does not require denoising.
+for layer in scene.view_layers:
+    if hasattr(layer, 'cycles'):
+        layer.cycles.use_denoising = False
+if hasattr(scene.cycles, 'use_denoising'):
+    scene.cycles.use_denoising = False
 scene.render.resolution_x = 512
 scene.render.resolution_y = 320
 scene.render.resolution_percentage = 100

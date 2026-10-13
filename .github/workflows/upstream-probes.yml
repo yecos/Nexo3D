@@ -3,7 +3,7 @@ on:
   push:
     branches: [spike/upstream-ci-real-probes]
   pull_request:
-    branches: [docs/reuse-first-technical-audit]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
