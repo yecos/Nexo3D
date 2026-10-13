@@ -39,6 +39,8 @@ export class CADWorkspace {
     this.grid = true;
     this.ortho = false;
     this.install();
+    this.resizeObserver = new ResizeObserver(() => { if (this.visible) this.drawSVG(); });
+    this.resizeObserver.observe(this.svg);
   }
   get cad() { return this.getProject().cad; }
   setVisible(value) {
@@ -166,11 +168,11 @@ export class CADWorkspace {
       } else {
         this.cursor = this.snap(this.pointer(e),e.shiftKey);
       }
-      this.render();
+      if (this.visible) this.drawSVG();
     });
     this.svg.addEventListener('pointerup', e => {
       if (this.panning) {
-        this.skipClick = this.panning.moved;
+        this.skipClick = this.panning.moved && e.button === 0;
         this.panning = null;
         if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
       }
@@ -195,7 +197,7 @@ export class CADWorkspace {
       const after = this.toWorld(x,y);
       this.center[0] += before[0]-after[0];
       this.center[1] += before[1]-after[1];
-      this.render();
+      if (this.visible) this.drawSVG();
     },{passive:false});
     this.layerPanel.addEventListener('click', e => {
       if (e.target.closest('#cad-add-layer')) {
