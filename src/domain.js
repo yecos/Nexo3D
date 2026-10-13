@@ -53,7 +53,19 @@ export function validateGLB(bytes) {
   if (v.getUint32(4, true) !== 2) throw new Error('Este prototipo solo admite GLB 2.0.');
   if (v.getUint32(8, true) !== bytes.byteLength) throw new Error('Longitud GLB incorrecta.');
   if (v.getUint32(16, true) !== 0x4e4f534a) throw new Error('Falta el bloque JSON del GLB.');
-  if (v.getUint32(12, true) > bytes.byteLength - 20) throw new Error('Bloque JSON fuera de rango.');
+  const jsonLength = v.getUint32(12, true);
+  if (jsonLength === 0 || jsonLength > bytes.byteLength - 20 || jsonLength % 4)
+    throw new Error('Bloque JSON inválido o fuera de rango.');
+  let json;
+  try {
+    const jsonBytes = new Uint8Array(bytes, 20, jsonLength);
+    json = JSON.parse(new TextDecoder().decode(jsonBytes).replace(/\\u0000+$/g, '').trim());
+  } catch { throw new Error('El GLB no tiene un JSON válido.'); }
+  // A self-contained GLB must not silently fetch external models/textures.
+  for (const item of [...(json.buffers || []), ...(json.images || [])]) {
+    if (item.uri && (!String(item.uri).startsWith('data:')))
+      throw new Error('GLB con recursos externos no permitido: usa un archivo autocontenido.');
+  }
   return true;
 }
 export function bytesToBase64(buffer) {
@@ -77,7 +89,8 @@ export function addGLB(project, name, buffer) {
   const node = {
     id, name: String(name || 'Modelo 3D').slice(0, 120), kind: 'glb', assetId,
     transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
-    material: { color: '#ffffff', metalness: 0, roughness: 0.65 }
+    material: { color: '#ffffff', metalness: 0, roughness: 0.65 },
+    materialOverrideEnabled: false
   };
   return {
     ...project,
@@ -110,6 +123,8 @@ export function validateProject(project) {
     if (!n.transform || !isVec(n.transform.position, 3) ||
       !isVec(n.transform.rotation, 3) || !isVec(n.transform.scale, 3) ||
       n.transform.scale.some(x => x === 0)) throw new Error('Transformación inválida.');
+    if (n.materialOverrideEnabled != null && typeof n.materialOverrideEnabled !== 'boolean')
+      throw new Error('Indicador de material inválido.');
     if (!n.material || !hex.test(n.material.color) ||
       !Number.isFinite(n.material.roughness) || !Number.isFinite(n.material.metalness) ||
       n.material.roughness < 0 || n.material.roughness > 1 ||

@@ -145,7 +145,11 @@ el('inspector').addEventListener('change', event => {
   } else if (input.dataset.material) {
     const id = selectedId, field = input.dataset.material;
     const value = field === 'color' ? input.value : Number(input.value);
-    update(p => { p.nodes.find(n => n.id === id).material[field] = value; },
+    update(p => {
+      const node = p.nodes.find(n => n.id === id);
+      node.material[field] = value;
+      node.materialOverrideEnabled = true;
+    },
       'Material actualizado.');
   } else if (['tool-move', 'tool-rotate', 'tool-scale'].includes(input.id)) {
     viewer.controls.setMode(input.id.replace('tool-', '') === 'rotate' ? 'rotate' :

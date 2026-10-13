@@ -12,7 +12,7 @@ export class Viewer {
     this.onTransform = onTransform;
     this.nodes = new Map();
     this.pending = new Set();
-    this.requestNumber = 0;
+    this.latestProject = null;
     this.selectedId = null;
     this.dragging = false;
     this.scene = new THREE.Scene();
@@ -102,9 +102,12 @@ export class Viewer {
     if (item?.userData.nodeId) this.onSelect(item.userData.nodeId);
   }
 
-  applyMaterial(group, material) {
+  applyMaterial(group, material, override = true) {
     group.traverse(obj => {
       if (!obj.isMesh) return;
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+      if (!override) return;
       if (!obj.userData.nexoMaterialCloned) {
         obj.material = Array.isArray(obj.material) ? obj.material.map(m => m.clone()) : obj.material.clone();
         obj.userData.nexoMaterialCloned = true;
@@ -135,7 +138,7 @@ export class Viewer {
       const gltf = await new Promise((resolve, reject) => this.gltf.parse(bytes, '', resolve, reject));
       group.add(gltf.scene);
     }
-    this.applyMaterial(group, node.material);
+    this.applyMaterial(group, node.material, node.kind === 'box' || !!node.materialOverrideEnabled);
     return group;
   }
 
@@ -147,7 +150,7 @@ export class Viewer {
   }
 
   async sync(project) {
-    const rev = ++this.requestNumber;
+    this.latestProject = project;
     this.scene.background.set(project.render.background);
     this.ambient.intensity = project.render.ambientIntensity;
     this.sun.intensity = project.render.sunIntensity;
@@ -163,13 +166,19 @@ export class Viewer {
         this.pending.add(node.id);
         try {
           const group = await this.makeGroup(node, project);
-          if (rev === this.requestNumber && project.nodes.some(n => n.id === node.id)) {
+          const current = this.latestProject?.nodes.find(n => n.id === node.id && n.assetId === node.assetId);
+          if (current) {
             this.nodes.set(node.id, { group });
             this.scene.add(group);
+            group.position.fromArray(current.transform.position);
+            group.rotation.fromArray([...current.transform.rotation, 'XYZ']);
+            group.scale.fromArray(current.transform.scale);
+            this.applyMaterial(group, current.material, current.kind === 'box' || !!current.materialOverrideEnabled);
+            if (this.selectedId === node.id) this.setSelection(node.id);
           }
         } catch (error) {
-          if (rev === this.requestNumber) console.error('Error de malla:', error);
-          this.onLoadError?.(error);
+          console.error('Error de malla:', error);
+          if (this.latestProject?.nodes.some(n => n.id === node.id)) this.onLoadError?.(error);
         } finally { this.pending.delete(node.id); }
       }
       const ref = this.nodes.get(node.id);
@@ -177,7 +186,7 @@ export class Viewer {
       ref.group.position.fromArray(node.transform.position);
       ref.group.rotation.fromArray([...node.transform.rotation, 'XYZ']);
       ref.group.scale.fromArray(node.transform.scale);
-      this.applyMaterial(ref.group, node.material);
+      this.applyMaterial(ref.group, node.material, node.kind === 'box' || !!node.materialOverrideEnabled);
     }
     this.setSelection(this.selectedId);
   }

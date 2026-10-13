@@ -7,14 +7,15 @@ import {
 } from './domain.js';
 
 function sampleGLB() {
-  // Minimal structurally valid binary header + JSON chunk (loader tests are separate).
-  const buffer = new ArrayBuffer(20);
+  // Structurally valid GLB header with 12-byte JSON chunk (loader tests are separate).
+  const buffer = new ArrayBuffer(32);
   const v = new DataView(buffer);
   v.setUint32(0, 0x46546c67, true);
   v.setUint32(4, 2, true);
-  v.setUint32(8, 20, true);
-  v.setUint32(12, 0, true);
+  v.setUint32(8, 32, true);
+  v.setUint32(12, 12, true);
   v.setUint32(16, 0x4e4f534a, true);
+  new Uint8Array(buffer, 20).set(new TextEncoder().encode('{"asset":{}}'));
   return buffer;
 }
 test('project schema survives offline save/read round-trip', () => {
@@ -46,7 +47,7 @@ test('a GLB can be referenced without losing binary representation', () => {
   const n = p.nodes.at(-1);
   assert.equal(n.kind, 'glb');
   assert.equal(n.name, 'Mueble');
-  assert.equal(base64ToBytes(p.assets[n.assetId].data).byteLength, 20);
+  assert.equal(base64ToBytes(p.assets[n.assetId].data).byteLength, 32);
   const restored = parseProject(saveProject(p));
   assert.equal(restored.nodes.length, 2);
 });
