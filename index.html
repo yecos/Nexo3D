@@ -36,7 +36,7 @@
           <div id="scene-list" class="scene-list"></div>
         </section>
         <section class="panel" id="cad-layers"></section>
-        <section class="panel note">
+        <section class="panel note" id="prototype-note">
           <h2>Primer prototipo</h2>
           <p>Dibuja en CAD, levanta muros vinculados y visualízalos en Modelado y Render. DWG, SKP, cotas avanzadas y BIM siguen pendientes.</p>
           <p>Orbitar: arrastrar · Desplazar: clic derecho · Zoom: rueda.</p>
@@ -44,6 +44,19 @@
       </aside>
       <section class="viewport-wrap">
         <div id="viewport" aria-label="Visor tridimensional" hidden></div>
+        <div id="hew-model-wrap" hidden>
+          <div id="hew-toolbar">
+            <button id="hew-send-cad" class="primary" title="Convierte los trazos CAD levantados en objetos editables Hew">Levantar CAD en Hew</button>
+            <button id="hew-to-render" title="Envía copia GLB del modelador Hew al espacio Render">Actualizar Render</button>
+            <span id="hew-state" role="status">Modelador Hew local · preparándose</span>
+          </div>
+          <div id="hew-missing" hidden>
+            <h2>Modelador Hew aún no compilado</h2>
+            <p>Para activar las herramientas profesionales de Hew, ejecuta <code>npm run hew:setup</code> en la carpeta NEXO 3D. Después vuelve a abrir Modelado.</p>
+            <p>Este proceso utiliza software libre descargado y compilado localmente. No se enviarán planos a ningún servidor.</p>
+          </div>
+          <iframe id="hew-frame" title="Hew · Herramientas interactivas de modelado NEXO" loading="lazy" referrerpolicy="same-origin"></iframe>
+        </div>
         <div id="cad-surface-wrap">
           <div id="cad-tools">
             <div class="cad-tool-row">

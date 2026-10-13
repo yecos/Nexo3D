@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Applies a minimal, auditable NEXO overlay to a pinned, cloned Hew checkout.
 // Upstream code is never checked into the NEXO repository.
-import {readFile,writeFile,existsSync,mkdir,cp} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,cp} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
@@ -31,7 +32,8 @@ const INJECTION=`
     }
     hello()
     const send = (message: unknown) => window.parent.postMessage(message, window.location.origin)
-    const ready = () => send({type:'nexo:hew.ready',version:1})
+    const session = crypto.randomUUID()
+    const ready = () => send({type:'nexo:hew.ready',version:1,session})
     const ensureCurrent = () => {
       const next = sceneRef.current
       if (next === null) throw Error('El documento Hew no está listo')
@@ -113,6 +115,11 @@ try {
     run('corepack',['pnpm','--dir','app','build'],origin);
     await mkdir(target,{recursive:true});
     await cp(join(app,'dist'),target,{recursive:true,force:true});
+    await writeFile(join(target,'nexo-manifest.json'),JSON.stringify({
+      integration:'nexo-hew',protocol:1,
+      sourceCommit:'f36661fb726253e501ef26a4d5fff3cc6381d814',
+      implementation:'embedded-web-modeler'
+    },null,2)+'\\n');
     const stat=await readFile(join(target,'index.html'),'utf8');
     must(stat.includes('/hew/'),'Build sin base /hew/');
     console.log('NEXO: built upstream Hew with embedded WebAssembly into '+target);
