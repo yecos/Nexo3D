@@ -42,6 +42,7 @@ class _LiveBridge:
         self._candidate = None
         self._candidate_count = 0
         self._last_import_sha = None
+        self._last_import_scene_id = None
         self._last_export_scene = None
         self._cad_timer = QTimer(app.window)
         self._cad_timer.setInterval(1000)
@@ -76,14 +77,15 @@ class _LiveBridge:
             if self._candidate_count < 2:
                 return
             digest = _sha(path)
-            if digest == self._last_import_sha:
+            if (digest == self._last_import_sha and
+                    id(self.app.scene) == self._last_import_scene_id):
                 return
 
             # Parse into a separate scene BEFORE touching the real document.
             # IngeTrazo already handles units, blocks, arcs, layers and recentering.
             from core.scene import Scene
             from formats.dxf_in import load_dxf, open_document, suggest_unit_scale
-            from core.history import SnapshotImport
+            from core.history import Command
 
             doc = open_document(path)
             scale, _unit_code = suggest_unit_scale(doc)
@@ -107,21 +109,47 @@ class _LiveBridge:
                 # Trace/copy geometry into independent 3D before Push/Pull.
                 group.locked = True
 
-            def replace_ref(scene):
-                # Only groups with our identity are replaced. Native 3D, faces,
-                # components and user-authored groups are left untouched.
-                scene.groups[:] = [g for g in scene.groups if not _is_reference(g)]
-                for layer in scratch.layers:
-                    if scene.layer(layer.name) is None:
-                        scene.layers.append(layer)
-                scene.groups.extend(imported)
-                scene.selection.clear()
-                scene.version += 1
+            # SnapshotImport only tracks *added* groups and cannot undo a
+            # reference replacement: removed old references would be lost.
+            # Keep an explicit reversible command preserving all user groups.
+            class ReplaceCadReference(Command):
+                def __init__(self):
+                    self.before_groups = None
+                    self.before_layers = None
+
+                def do(self, scene):
+                    if self.before_groups is None:
+                        self.before_groups = list(scene.groups)
+                        self.before_layers = list(scene.layers)
+                    scene.groups[:] = [
+                        g for g in scene.groups if not _is_reference(g)
+                    ] + imported
+                    existing = {ly.name for ly in scene.layers}
+                    for layer in scratch.layers:
+                        if layer.name not in existing:
+                            scene.layers.append(layer)
+                            existing.add(layer.name)
+                    scene.selection.clear()
+                    scene.version += 1
+
+                def undo(self, scene):
+                    scene.groups[:] = self.before_groups
+                    scene.layers[:] = self.before_layers
+                    scene.selection.clear()
+                    scene.version += 1
 
             vp = self.app.viewport
-            vp.history.execute(SnapshotImport(replace_ref))
+            vp.history.execute(ReplaceCadReference())
+            # History.execute logs failures instead of raising. Do not mark a
+            # revision imported unless the new reference actually exists.
+            if not any(
+                _is_reference(g) and g.ext[MARKER].get("cad_sha256") == digest
+                for g in vp.scene.groups
+            ):
+                raise RuntimeError("IngeTrazo rejected the live CAD update")
             vp.notify_scene_changed()
             self._last_import_sha = digest
+            self._last_import_scene_id = id(vp.scene)
             self.app.window.statusBar().showMessage(
                 f"NEXO CAD enlazado: {summary['edges']} aristas · revisado.", 5000)
         except Exception as exc:
