@@ -1,0 +1,74 @@
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "hew.meta.hello",
+    "params": {
+      "protocol": 1,
+      "client": {
+        "name": "nexo3d-foundation-probe",
+        "version": "0.1.0"
+      }
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "hew.doc.new",
+    "params": {}
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "hew.doc.transact",
+    "params": {
+      "label": "Muro arquitectónico 4 × 0.15 × 2.60 metros",
+      "commands": [
+        {
+          "method": "hew.sketch.draw_rect",
+          "as": "footprint",
+          "params": {
+            "plane": {
+              "ground": true
+            },
+            "corner_a": [
+              0,
+              0,
+              0
+            ],
+            "corner_b": [
+              4,
+              0.15,
+              0
+            ]
+          }
+        },
+        {
+          "method": "hew.solid.extrude",
+          "as": "wall",
+          "params": {
+            "region": {
+              "$ref": "footprint#/region_id"
+            },
+            "distance": 2.6
+          }
+        },
+        {
+          "method": "hew.entity.rename",
+          "params": {
+            "id": {
+              "$ref": "wall#/object_id"
+            },
+            "name": "Muro A 4 m"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "hew.query.scene",
+    "params": {}
+  }
+]
