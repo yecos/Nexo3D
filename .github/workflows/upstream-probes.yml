@@ -1,0 +1,129 @@
+name: OSS foundations reproducible smoke
+on:
+  push:
+    branches: [spike/upstream-ci-real-probes]
+  pull_request:
+    branches: [docs/reuse-first-technical-audit]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hew-headless:
+    name: Hew CLI and kernel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout pinned Hew
+        run: |
+          git clone --filter=blob:none https://github.com/hew3d/hew.git upstream-hew
+          git -C upstream-hew checkout f36661fb726253e501ef26a4d5fff3cc6381d814
+          git -C upstream-hew rev-parse HEAD
+      - name: Install pinned Rust compiler
+        run: |
+          rustup toolchain install 1.97.1 --profile minimal
+          cd upstream-hew
+          rustc --version
+          cargo --version
+      - name: Actual upstream kernel unit tests
+        run: |
+          cd upstream-hew
+          cargo test --locked -p kernel --lib
+      - name: Hew CLI creates and exports architectural solid
+        run: |
+          mkdir -p artifacts
+          cd upstream-hew
+          cargo run --locked -p hew-cli -- run ../tests/upstreams/hew_wall.json --out ../artifacts/wall.hew | tee ../artifacts/hew-api-replies.jsonl
+          cargo run --locked -p hew-cli -- dispatch hew.query.scene '{}' --file ../artifacts/wall.hew | tee ../artifacts/hew-scene.json
+          cargo run --locked -p hew-cli -- dispatch hew.doc.export '{"format":"glb","path":"../artifacts/wall.glb"}' --file ../artifacts/wall.hew | tee ../artifacts/hew-export.json
+          cargo run --locked -p hew-cli -- dispatch hew.doc.export '{"format":"skp2017","path":"../artifacts/wall.skp"}' --file ../artifacts/wall.hew | tee ../artifacts/hew-skp-export.json
+      - name: Validate binaries independently
+        run: |
+          python tests/upstreams/verify_hew_artifacts.py artifacts
+      - name: Upload evidence even on partial failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hew-probe-${{ runner.os }}
+          path: artifacts/
+          retention-days: 7
+          if-no-files-found: warn
+
+  ingecad-headless:
+    name: IngeCAD real CAD tests (Linux headless)
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Checkout pinned IngeCAD
+        run: |
+          git clone --filter=blob:none https://github.com/ingelibre/ingecad.git upstream-ingecad
+          git -C upstream-ingecad checkout 27cfce77340cec5c418032c13986a462b492da3a
+          git -C upstream-ingecad rev-parse HEAD
+      - name: Install Qt/CAD requirements
+        run: |
+          python -m pip install -r upstream-ingecad/requirements.txt
+      - name: Report DWG converter availability
+        run: |
+          if command -v dwg2dxf >/dev/null && command -v dxf2dwg >/dev/null; then
+            echo "DWG_CONVERTERS=AVAILABLE" | tee converter-status.txt
+          else
+            echo "DWG_CONVERTERS=MISSING; real DWG tests skipped" | tee converter-status.txt
+          fi
+      - name: Run IngeCAD dimension and converter regression tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          cd upstream-ingecad
+          python -m pytest -q tests/test_dimension.py tests/test_drafting.py tests/test_dwg_bridge.py | tee ../ingecad-tests.log
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingecad-test-logs
+          path: |
+            converter-status.txt
+            ingecad-tests.log
+          retention-days: 7
+          if-no-files-found: warn
+
+  blender-glb:
+    name: Hew GLB to Cycles PNG (Linux)
+    needs: [hew-headless]
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: hew-probe-Linux
+          path: artifacts
+      - name: Install Blender
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y blender
+          blender --version | head -n 2
+      - name: Import Hew GLB and render Cycles PNG
+        run: |
+          blender --background --factory-startup --threads 2 --python tests/upstreams/render_blender.py -- artifacts/wall.glb artifacts/hew-cycles.png | tee artifacts/blender.log
+          python tests/upstreams/check_png.py artifacts/hew-cycles.png
+      - name: Upload rendered image and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hew-to-blender-proof
+          path: |
+            artifacts/hew-cycles.png
+            artifacts/blender.log
+          retention-days: 7
+          if-no-files-found: warn
