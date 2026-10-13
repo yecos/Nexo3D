@@ -2,12 +2,15 @@
 
 **Regla:** no adoptar tecnología por parecido de interfaz ni por una sola captura. Evaluar código, licencias, APIs, mantenimiento, interoperabilidad, rendimiento y posibilidades web. **No se ha adoptado aún un kernel concreto.**
 
+**Actualización 2026-10-13:** leer primero la [auditoría estática de reutilización](audits/2026-10-13-oss-reuse-audit.md) y el [plan de PoC](spikes/FOUNDATION_POC_PLAN.md). Hew es candidato prioritario para web/escritorio; IngeCAD + IngeTrazo para desktop. El `LICENSE` raíz de LibreCAD declara **GPLv2-only**; no fusionar su fuente directamente en NEXO AGPLv3.
+
 ## Candidatos y preguntas abiertas
 | Área | Candidato | Ventaja a evaluar | Riesgo/pregunta |
 | --- | --- | --- | --- |
 | Modelador / núcleo | [Hew](https://github.com/hew3d/hew) | Enfoque sólido, multiplataforma y web; Rust/WASM | Licencia AGPL y excepción de plugins; acoplamiento interno, APIs e integración |
 | Modelador | [IngeTrazo](https://github.com/ingelibre/ingetrazo) | Herramientas de arquitectura y experiencia similar a SketchUp | Stack/portabilidad web, licencia, estado y APIs |
-| CAD 2D | [LibreCAD](https://github.com/LibreCAD/LibreCAD) | Herramientas DXF 2D establecidas | Integración con núcleo de escena, stack de UI |
+| CAD 2D | [LibreCAD](https://github.com/LibreCAD/LibreCAD) | Herramientas DXF 2D establecidas | **Bloqueo GPLv2-only para obra AGPLv3 combinada**; solo referencia o evaluación de módulos separados |
+| CAD 2D | [IngeCAD](https://github.com/ingelibre/ingecad) | Python/Qt, comandos CAD y DWG mediante conversor LibreDWG | Solo desktop/Linux-first; camino web no resuelto |
 | CAD 2D | [QCAD](https://github.com/qcad/qcad) | Scripting y herramienta CAD madura | Distinguir Community GPL de addons/complementos comerciales |
 | Geometría | [OpenCascade.js](https://github.com/donalffons/opencascade.js) | CAD B-Rep en WASM | Tamaño, rendimiento, licencias y tolerancias |
 | Viewport | [Three.js](https://github.com/mrdoob/three.js) | Visualización web, integración UI | No es motor D5 listo; precisión y escenas grandes |

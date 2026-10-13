@@ -16,7 +16,9 @@
 | 7 | [IA Studio](AI_STUDIO.md) | Imagen→3D, revisión y proveedores |
 | 8 | [Offline-first](OFFLINE_FIRST.md) | Datos locales, privacidad, sync |
 | 9 | [Interoperabilidad](INTEROPERABILITY.md) | GLB, DXF, IFC, SKP y fidelidad |
-| 10 | [Evaluación de motores](ENGINE_EVALUATION.md) | Rúbrica Hew/IngeTrazo y demás |
+| 10 | [Evaluación de motores](ENGINE_EVALUATION.md) | Rúbrica y decisiones pendientes |
+| 10a | [Auditoría de reutilización OSS](audits/2026-10-13-oss-reuse-audit.md) | Hew vs IngeCAD/IngeTrazo; licencias y evidencias con SHA |
+| 10b | [Pruebas de bases tecnológicas](spikes/FOUNDATION_POC_PLAN.md) | Experimentos a ejecutar antes del fork definitivo |
 | 11 | [Roadmap](ROADMAP.md) | M0–M6, criterios de salida |
 | 12 | [Guía para construir MVP](MVP_IMPLEMENTATION.md) | Tickets técnicos en orden |
 | 13 | [Estrategia de pruebas](TEST_STRATEGY.md) | Fixtures, tests, plataforma, evidencia |

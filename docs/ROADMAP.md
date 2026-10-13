@@ -1,6 +1,6 @@
 # Hoja de ruta basada en evidencias
 
-**Estado a 2026-10-13:** repositorio y especificaciones iniciales. **No hay ejecutable.** No fijar fechas de entrega antes de estimar capacidad y validar dependencias.
+**Estado a 2026-10-13:** especificaciones en `main`, código experimental en PR #1 y PR #2, y [auditoría de reutilización OSS](audits/2026-10-13-oss-reuse-audit.md) realizada sobre fuentes. **No hay ejecutable estable ni base final escogida**. El siguiente hito es compilar y ensayar upstream antes de inventar más herramientas.
 
 ## Resumen de hitos
 | Hito | Resultado demostrable | Dependencias |
@@ -17,7 +17,8 @@
 - [x] Repositorio público.
 - [x] Requisitos de producto acordados: offline-first, escritorio, web futura y espacios de trabajo.
 - [x] Confirmación de licencia AGPL-3.0.
-- [ ] Completar evaluación **reproducible** de Hew / IngeTrazo / geometría CAD y licencias transitivas.
+- [x] Inspección documental inicial de Hew / IngeCAD / IngeTrazo / QCAD / LibreCAD / Blender, con SHAs, licencias y puntos de integración.
+- [ ] Completar evaluación **ejecutable y reproducible** en hardware real; pruebas de licencias transitivas, DWG/SKP y Blender; ver [plan de PoC](spikes/FOUNDATION_POC_PLAN.md).
 - [ ] Acordar ADR de motor elegido después de prueba de concepto.
 - [ ] Crear configuración monorepo y pipeline CI mínimo; comandos se añadirán cuando exista código.
 **Salida:** documentación y licencia publicadas, candidatos documentados; sin afirmar que exista aplicación.
