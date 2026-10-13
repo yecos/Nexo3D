@@ -9,7 +9,7 @@
 3. Pulsar **Levantar CAD en Hew**. Se envían operaciones `hew.doc.transact` a la escena **viva de Hew**. El editor muestra sólidos nativos; usa Push/Pull, Move, Scale, componentes, etc. de Hew directamente.
 4. Pulsar **Actualizar Render**. Hew convierte los sólidos actuales a GLB; NEXO recibe los bytes directamente en el navegador y los guarda como snapshot del espacio Render.
 5. Regresar a Render. El visor NEXO contiene los materiales y luces básicos existentes. Los retoques del modelo desde Hew aparecen tras actualizar.
-6. Guardar el archivo NEXO desde su menú principal. **Importante:** conserva CAD, los modelos GLB existentes y el último snapshot enviado a Render. **No conserva todavía el documento paramétrico `.hew`**: para mantener la edición completa, guardar además desde **File > Save** en Hew.
+6. En la rama sucesora `feat/unified-nexo-hew-project`, **Guardar** captura el documento nativo Hew junto con CAD y Render en **un solo archivo**. Ver [proyecto unificado](HEW_UNIFIED_PROJECT.md). En esta rama anterior se requería guardar Hew por separado.
 
 ### Limitaciones deliberadas
 
@@ -73,4 +73,4 @@ En Windows también puede compilarse Hew upstream con Rust/wasm-pack y Node adec
 - [ ] Verificar que se conserva el resto de escena Hew ajena al CAD si se regeneran los muros.
 - [ ] Probar Linux/Windows en GPU real, sin red tras instalación.
 
-**Siguiente hito:** persistir `.hew` dentro de un único paquete de proyecto NEXO; luego pasar de iframe experimental a shell React/Tauri común con contratos de ediciones bidireccionales y render Cycles integrado.
+**Siguiente hito:** validar el proyecto unificado v3 en Chromium y después avanzar a edición CAD↔Hew bidireccional, shell React/Tauri común y render Cycles integrado. Ver [HEW_UNIFIED_PROJECT.md](HEW_UNIFIED_PROJECT.md).

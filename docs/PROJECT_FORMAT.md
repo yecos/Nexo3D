@@ -1,6 +1,6 @@
 # Documento y formato de proyecto — diseño inicial
 
-**Estado:** propuesta de contrato. No hay extensión o esquema estabilizados. **GLB es intercambio, NO proyecto nativo completo.**
+**Estado:** propuesta de contrato futuro. Existe un **esquema de prototipo v3** en [HEW_UNIFIED_PROJECT.md](HEW_UNIFIED_PROJECT.md) que guarda CAD + Hew ZIP editable + GLB Render como un solo JSON local. No es aún formato definitivo. **GLB es intercambio, NO proyecto nativo completo.**
 
 ## Objetivos
 1. Identidad estable para objetos y sus propiedades entre CAD, Modelado y Render.

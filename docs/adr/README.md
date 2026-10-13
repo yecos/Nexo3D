@@ -9,5 +9,6 @@ Cada decisión significativa debe tener un ADR numerado con **Contexto**, **Deci
 | [0003](0003-shared-scene.md) | Aceptada a nivel de principios | Escena editable como fuente de verdad |
 | [0004](0004-license.md) | Aceptada | AGPL-3.0-only y atribuciones |
 | [0007](0007-hew-foundation-spike.md) | Spike en curso | Motor Hew externo para convertir CAD → sólidos |
+| [0008](0008-unified-project.md) | Spike en curso | Proyecto único con CAD, Hew editable y Render |
 
 **Pendientes:** elección concreta de motor CAD, biblioteca 3D, backend interactivo de render, schema nativo y compatibilidad real de dependencias. No redactar un ADR como si se hubiera validado una tecnología que aún no se ha probado.

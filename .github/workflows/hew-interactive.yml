@@ -1,7 +1,7 @@
 name: Integrated Hew interactive modeler
 on:
   push:
-    branches: [feat/hew-interactive-workspace]
+    branches: [feat/hew-interactive-workspace, feat/unified-nexo-hew-project]
   workflow_dispatch:
 permissions:
   contents: read
@@ -52,6 +52,23 @@ jobs:
           find dist/hew -name '*.wasm' | grep -q wasm
           grep -q '/hew/' dist/hew/index.html
           echo 'PASS: NEXO bundle contains genuine Hew React+WASM editor'
+      - name: Install Chromium to verify real save/reopen in browser
+        run: |
+          # Run from the pinned upstream workspace so Corepack uses Hew's pnpm version.
+          cd upstream-hew
+          corepack pnpm --dir app exec playwright install --with-deps chromium
+      - name: Test real browser CAD -> Hew -> single file -> reopen
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run preview -- --port 4173 > /tmp/nexo-preview.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:4173/hew/nexo-manifest.json >/dev/null; then break; fi
+            sleep 2
+          done
+          node tests/e2e/unified-project.mjs
       - name: Attach testable browser build (not a desktop installer)
         uses: actions/upload-artifact@v4
         with:

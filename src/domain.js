@@ -2,7 +2,8 @@
 // Copyright (C) 2026 NEXO 3D contributors
 import { defaultCad, cloneCad, validateCad } from './cad-domain.js';
 export const FORMAT = 'nexo3d-prototype';
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
+export const MAX_HEW_BYTES = 30 * 1024 * 1024;
 export const MAX_GLB_BYTES = 30 * 1024 * 1024;
 export const MAX_PROJECT_BYTES = 70 * 1024 * 1024;
 
@@ -25,7 +26,7 @@ export function makeProject() {
   return {
     format: FORMAT, schemaVersion: SCHEMA_VERSION,
     id: newId(), name: 'Proyecto sin título', units: 'm',
-    nodes: [makeBox('Volumen de prueba')], assets: {}, cad: defaultCad(),
+    nodes: [makeBox('Volumen de prueba')], assets: {}, cad: defaultCad(), hew: null,
     render: { background: '#1b2327', sunIntensity: 2, ambientIntensity: 1.2 }
   };
 }
@@ -119,6 +120,30 @@ export function validateProject(project) {
       project.render.ambientIntensity < 0 || project.render.ambientIntensity > 4)
     throw new Error('Parámetros de iluminación inválidos.');
   validateCad(project.cad);
+  // The Hew native document is a self-contained ZIP binary, embedded in the
+  // same offline JSON as CAD and GLB previews. There are no external paths.
+  if (project.hew !== null && project.hew !== undefined) {
+    const doc = project.hew;
+    if (!doc || typeof doc !== 'object' || Array.isArray(doc) ||
+        doc.format !== 'hew' || doc.encoding !== 'base64' || doc.version !== 1 ||
+        !Array.isArray(doc.generatedIds) || doc.generatedIds.length > 400 ||
+        new Set(doc.generatedIds).size !== doc.generatedIds.length ||
+        doc.generatedIds.some(id => typeof id !== 'string' || id.length > 120 || !/^obj_[a-zA-Z0-9_-]+$/.test(id)) ||
+        typeof doc.data !== 'string' || doc.data.length < 8 ||
+        doc.data.length > Math.ceil(MAX_HEW_BYTES / 3) * 4 ||
+        !/^[A-Za-z0-9+/]+={0,2}$/.test(doc.data) || doc.data.length % 4 !== 0)
+      throw new Error('Documento editable Hew inválido.');
+    let binary;
+    try { binary = base64ToBytes(doc.data); }
+    catch { throw new Error('Documento Hew con base64 inválido.'); }
+    const bytes = new Uint8Array(binary);
+    if (bytes.byteLength < 22 || bytes.byteLength > MAX_HEW_BYTES ||
+        bytes[0] !== 0x50 || bytes[1] !== 0x4b)
+      throw new Error('El documento Hew no es un contenedor ZIP válido.');
+    if (bytesToBase64(binary) !== doc.data)
+      throw new Error('Codificación Hew no canónica.');
+    // Full archive validation is performed when the Hew WASM kernel loads it.
+  }
   const ids = new Set();
   for (const n of project.nodes) {
     if (!n || typeof n.id !== 'string' || ids.has(n.id) || n.id.length > 120 ||
@@ -156,11 +181,38 @@ export function parseProject(text) {
   // Migration: archived documents from the first 3D-only prototype remain usable.
   if (parsed?.format === FORMAT && parsed.schemaVersion === 1 && !parsed.cad) {
     parsed.cad = defaultCad();
+    parsed.schemaVersion = 2;
+  }
+  if (parsed?.format === FORMAT && parsed.schemaVersion === 2) {
+    parsed.hew = null;
     parsed.schemaVersion = SCHEMA_VERSION;
   }
   return validateProject(parsed);
 }
 export function saveProject(project) {
   validateProject(project);
-  return JSON.stringify(project, null, 2);
+  const json = JSON.stringify(project, null, 2);
+  if (new TextEncoder().encode(json).length > MAX_PROJECT_BYTES)
+    throw new Error('El proyecto supera el límite de 70 MB; reduce activos o tamaño Hew.');
+  return json;
+}
+
+/** Adds a binary snapshot of Hew's editable native scene; never mutates input. */
+export function withHewDocument(project, bytes, generatedIds = []) {
+  if (!(bytes instanceof ArrayBuffer) || bytes.byteLength < 22 ||
+      bytes.byteLength > MAX_HEW_BYTES)
+    throw new Error('Documento Hew vacío o superior a 30 MB.');
+  const a = new Uint8Array(bytes);
+  if (a[0] !== 0x50 || a[1] !== 0x4b)
+    throw new Error('Hew no produjo su archivo ZIP nativo.');
+  const next = {...project, hew: {
+    format: 'hew', encoding: 'base64', version: 1, generatedIds: [...generatedIds], data: bytesToBase64(bytes)
+  }};
+  validateProject(next);
+  return next;
+}
+
+export function getHewDocument(project) {
+  validateProject(project);
+  return project.hew ? base64ToBytes(project.hew.data) : null;
 }

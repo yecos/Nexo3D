@@ -4,7 +4,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
 
-> **Estado (2026-10-13): prototipo experimental en PR #1 (visor GLB) y rama sucesora CAD 2D → Muros 3D.** Los tres workspaces comparten el mismo estado local; aún faltan pruebas manuales Windows/Linux, instaladores y la edición CAD avanzada. DXF/DWG/SKP siguen pendientes.
+> **Estado (2026-10-13): desarrollo experimental en PRs sucesivos.** CAD 2D y Render funcionan como prototipos; Hew se incorpora como editor interactivo de modelado y se está probando el [archivo único CAD + Hew editable + Render](docs/HEW_UNIFIED_PROJECT.md). Aún faltan certificación en navegador/PC real, instaladores y CAD avanzado. DWG/IFC nativos están pendientes; exportación SKP 2017 desde Hew ha sido probada a nivel de emisión, no de compatibilidad completa.
 
 ## La idea
 Una plataforma multiplataforma y **offline-first** con **cuatro espacios de trabajo sobre un único proyecto**:
@@ -33,6 +33,10 @@ El primer visor 3D se encuentra en [PR #1](https://github.com/yecos/Nexo3D/pull/
 ## Motor Hew experimental — reutilización real
 
 Hay una [integración CAD → Hew → GLB/SKP → Blender](docs/HEW_FOUNDATION.md) en la rama `feat/hew-foundation-adapter`. No copiamos Hew: su CLI externa crea los sólidos a partir de los trazos de NEXO. La UI todavía utiliza Three.js y el flujo es **por lotes**, no sincronización interactiva bidireccional. [ADR-0007](docs/adr/0007-hew-foundation-spike.md).
+
+## Un solo archivo de trabajo (prototipo v3)
+
+La rama `feat/unified-nexo-hew-project` permite incorporar el documento **editable** de Hew en el mismo archivo `.nexo3d.json` que almacena CAD y Render. El editor 3D no se reduce a un GLB: NEXO captura y reabre la escena Hew WASM. [Flujo y límites](docs/HEW_UNIFIED_PROJECT.md).
 
 ## Primera meta (MVP)
 1. Importar un modelo GLB.

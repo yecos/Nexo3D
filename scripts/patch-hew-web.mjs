@@ -65,6 +65,33 @@ const INJECTION=`
         } catch (error) {
           send({type:'nexo:hew.reply',id:request.id,error:String(error)})
         }
+      } else if (request.type === 'nexo:hew.save') {
+        try {
+          ensureCurrent()
+          const raw = new Uint8Array(currentScene.save())
+          if (raw.byteLength < 22 || raw.byteLength > 30 * 1024 * 1024)
+            throw Error('Documento Hew fuera del límite de 30 MB')
+          const data = raw.buffer.slice(raw.byteOffset,raw.byteOffset + raw.byteLength)
+          window.parent.postMessage({type:'nexo:hew.native',id:request.id,data},
+            window.location.origin,[data])
+        } catch(error) {
+          send({type:'nexo:hew.reply',id:request.id,error:String(error)})
+        }
+      } else if (request.type === 'nexo:hew.load') {
+        try {
+          ensureCurrent()
+          const data = request.data
+          if (data !== null && (!(data instanceof ArrayBuffer) ||
+              data.byteLength < 22 || data.byteLength > 30 * 1024 * 1024))
+            throw Error('Archivo Hew no válido o superior a 30 MB')
+          const bytes = data === null ? blankBytesRef.current : new Uint8Array(data)
+          if (!bytes || !applyLoadedBytesRef.current?.(bytes))
+            throw Error('Hew rechazó el documento; escena sin restaurar')
+          // The UI owns the load/reset bookkeeping, selection and render refresh.
+          send({type:'nexo:hew.reply',id:request.id,result:{result:{loaded:true}}})
+        } catch(error) {
+          send({type:'nexo:hew.reply',id:request.id,error:String(error)})
+        }
       } else if (request.type === 'nexo:hew.export') {
         void (async () => {
           try {

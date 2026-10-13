@@ -57,12 +57,12 @@ test('CAD: guardado local y clonación son independientes', () => {
   assert.equal(project.cad.shapes[0].points[0][0],1);
   assert.deepEqual(parseProject(saveProject(project)).cad,project.cad);
 });
-test('CAD: proyectos v1 migran a esquema v2 con CAD vacío', () => {
+test('CAD: proyectos v1 migran a esquema v3 con CAD vacío y Hew opcional', () => {
   const project=makeProject();
   delete project.cad;
   project.schemaVersion=1;
   const migrated=parseProject(JSON.stringify(project));
-  assert.equal(migrated.schemaVersion,2);
+  assert.equal(migrated.schemaVersion,3);
   assert.deepEqual(migrated.cad.shapes,[]);
 });
 test('CAD: no acepta entidades malformadas ni parámetros peligrosos', () => {
