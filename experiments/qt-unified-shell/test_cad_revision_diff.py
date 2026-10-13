@@ -1,5 +1,7 @@
 """No ezdxf/PySide dependencies: verify CAD change report contract."""
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from cad_revision_diff import compare_layers, describe_changes, scan_document
 
@@ -93,6 +95,28 @@ class CadChangesTests(unittest.TestCase):
         ))
         self.assertEqual(snapshot["Muros"]["entities"], 2)
         self.assertEqual(snapshot["Muros"]["types"], {"ARC": 1, "LINE": 1})
+
+    def test_saved_real_dxf_lines_if_ezdxf_available(self):
+        try:
+            import ezdxf
+        except ImportError:
+            self.skipTest("ezdxf is optional in source-mode")
+        from cad_revision_diff import snapshot_dxf
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "house.dxf"
+            doc = ezdxf.new("R2013")
+            doc.header["$INSUNITS"] = 6
+            doc.modelspace().add_line((0, 0), (4, 0),
+                                       dxfattribs={"layer": "Muros"})
+            doc.saveas(path)
+            before = snapshot_dxf(path)
+            self.assertEqual(before["Muros"]["entities"], 1)
+            doc.modelspace().add_line((0, 0), (0, 2),
+                                       dxfattribs={"layer": "Muros"})
+            doc.saveas(path)
+            after = snapshot_dxf(path)
+            self.assertEqual(after["Muros"]["entities"], 2)
+            self.assertEqual(compare_layers(before, after)["changed"], ["Muros"])
 
     def test_empty_drawing(self):
         self.assertEqual(scan_document(FakeDoc()), {})
