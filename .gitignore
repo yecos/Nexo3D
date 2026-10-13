@@ -8,3 +8,7 @@ dist/
 !.env.example
 coverage/
 *.nexo3d.json
+
+# Generated offline Hew web editor (third-party code, never commit compiled assets)
+upstream-hew/
+public/hew/
