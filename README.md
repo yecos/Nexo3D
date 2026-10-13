@@ -1,42 +1,57 @@
 # NEXO 3D
 
-**Open-source architecture, interior design and visualization — offline first.**
+**CAD · Modelado · Render · IA — una aplicación abierta para diseñar, construir y visualizar espacios.**
 
-**Estado / Status:** etapa inicial de arquitectura. Aún no existe una aplicación instalable.
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
 
-NEXO 3D busca reunir un único proyecto y varias áreas de trabajo, con las herramientas adecuadas para cada fase del diseño:
+> **Estado (2026-10-13): fase de diseño y documentación.** Este repositorio NO contiene todavía una aplicación instalable, un motor propio implementado ni un prototipo validado. Las tecnologías listadas son propuestas que requieren pruebas y auditorías.
 
-- **CAD:** plantas, capas, cotas y documentación 2D.
-- **Modelado:** geometría 3D, componentes y mobiliario.
-- **Render:** materiales PBR, HDRI, iluminación, cámaras y visualización.
-- **IA Studio:** referencias e imagen-a-3D, con ejecución local o nube opcional.
+## La idea
+Una plataforma multiplataforma y **offline-first** con **cuatro espacios de trabajo sobre un único proyecto**:
 
-## Principios
+| Espacio | Función |
+| --- | --- |
+| **CAD** | Plantas, cortes, capas, cotas, bloques, impresión y dibujo preciso 2D |
+| **Modelado** | Volúmenes, empujar/tirar, objetos, componentes, mobiliario y geometría 3D |
+| **Render** | PBR, HDRI, sol, luces, cámaras, recorridos y renders |
+| **IA Studio** | Imágenes de referencia, imagen→3D, mejoras de malla, catalogación y automatización opcional |
 
-1. **Funciona sin internet:** la creación, edición y apertura de proyectos deben funcionar de manera local. La nube es opcional.
-2. **Multiplataforma:** Windows, Linux y macOS; pensado también para la web.
-3. **Un proyecto, distintos espacios de trabajo:** los cambios en geometría y propiedades son compartidos.
-4. **Código abierto:** desarrollo público y transparente, con respeto a licencias y atribuciones.
-5. **Arquitectura modular:** cada motor se integra a través de interfaces documentadas, sin depender de formatos propietarios como fuente primaria de datos.
+El mismo objeto y sus propiedades permanecen sincronizados al cambiar de espacio de trabajo. La nube **no es requisito** para editar, guardar, abrir y visualizar proyectos.
 
-## Primera meta verificable (MVP)
+## Principios no negociables
+- **Libertad:** código fuente público bajo AGPL-3.0-only (consultar [LICENSE](LICENSE)); contribuciones y componentes externos mantienen avisos/licencias correspondientes.
+- **Un único estado canónico:** los workspaces son vistas y herramientas de un modelo compartido, no editores desconectados.
+- **Escritorio primero, web preparada:** Windows, Linux y macOS; evitar decisiones que bloqueen ejecución web futura.
+- **Archivos locales y portables:** guardado recuperable, backups y migraciones de versión.
+- **Interop realista:** glTF/GLB inicialmente; DXF/IFC/SKP según estudios y pruebas. No prometer compatibilidad total con DWG/SKP/D5.
+- **Transparencia:** separar lo implementado, lo experimental y lo planificado; exigir pruebas y evidencia.
 
-Importar una escena GLB, mostrarla en el editor, cambiar entre vistas Modelado y Render sin exportar, aplicar un material PBR y una luz/HDRI, guardar localmente y volver a abrir el proyecto.
+## Primera meta (MVP)
+1. Importar un modelo GLB.
+2. Mostrarlo y transformar al menos un objeto.
+3. Alternar **Modelado ↔ Render** sin exportaciones.
+4. Asignar un material PBR y una luz/entorno.
+5. Guardar localmente el proyecto, cerrar, reabrir y recuperar su estado **sin internet**.
+6. Validarlo al menos en Linux y Windows.
 
-**No intentaremos reproducir íntegramente AutoCAD, SketchUp o D5 en la primera versión.**
+La capacidad CAD 2D y la generación IA llegarán de manera incremental; aún no se han implementado.
 
-## Diseño técnico
+## Documentación
+Empieza en el **[Índice de documentación](docs/README.md)** y continúa por:
+- [Visión de producto](docs/PRODUCT_VISION.md)
+- [Requisitos trazables](docs/REQUIREMENTS.md)
+- [Arquitectura técnica](docs/ARCHITECTURE.md)
+- [Hoja de ruta y criterios de salida](docs/ROADMAP.md)
+- [Guía de desarrollo](docs/DEVELOPMENT.md)
+- [Contribuir](CONTRIBUTING.md) · [Seguridad](SECURITY.md)
 
-Consulta [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) para la arquitectura propuesta y [docs/ROADMAP.md](docs/ROADMAP.md) para etapas y criterios de aceptación.
+## Tecnología (candidatas, no integración realizada)
+React/TypeScript y Tauri para interfaces de escritorio; Rust/WASM para componentes reutilizables; evaluar Hew e IngeTrazo para modelado; un visor web moderno para interacción; Blender/Cycles mediante adaptador separado para imágenes finales. **Ningún proyecto externo se ha incorporado todavía.**
 
-> La selección de componentes externos (Hew, IngeTrazo, FreeCAD/LibreCAD, Blender, etc.) es aún exploratoria. No se ha incorporado código de esos proyectos y antes se auditarán las licencias.
-
-## Licencia
-
-**Pendiente de decisión y revisión de compatibilidad.** Que un repositorio sea público no concede automáticamente permiso legal para reutilizar su código. Antes de publicar código utilizable se incorporará una licencia libre explícita (se evaluará AGPL-3.0).
+## Contribuir y licencias
+Consulta [CONTRIBUTING.md](CONTRIBUTING.md), [docs/LICENSING.md](docs/LICENSING.md) y [LICENSE](LICENSE). NEXO 3D es un proyecto independiente: no está afiliado con Autodesk, Trimble ni D5. Referencias a productos comerciales se usan solo para describir funcionalidades comparables.
 
 ---
 
-## English
-
-NEXO 3D is an early-stage, public, offline-first, cross-platform architecture/design project with shared CAD, modeling, rendering and AI workspaces. The optional cloud should not be required for ordinary project editing. **No runnable application has been published yet; the open-source license is pending final selection.**
+### English summary
+NEXO 3D is a planned free/open-source, offline-first, cross-platform architecture and visualization application with one shared scene and multiple workspaces (CAD, Modeling, Render, AI Studio). **Early design stage; no working release yet.** Source code is licensed under AGPL-3.0-only; third-party materials retain their licenses. Start at [docs/README.md](docs/README.md).

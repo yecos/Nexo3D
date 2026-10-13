@@ -1,45 +1,71 @@
-# Hoja de ruta — NEXO 3D
+# Hoja de ruta basada en evidencias
 
-## Fase 0 — Fundamentos
+**Estado a 2026-10-13:** repositorio y especificaciones iniciales. **No hay ejecutable.** No fijar fechas de entrega antes de estimar capacidad y validar dependencias.
 
-- [x] Repositorio público creado
-- [x] Visión y arquitectura inicial documentadas
-- [ ] Elegir licencia de software libre compatible con las bases seleccionadas
-- [ ] Revisar de forma documentada las bases Hew, IngeTrazo y posibles motores
-- [ ] Crear esqueleto de app, checks automáticos y pruebas
+## Resumen de hitos
+| Hito | Resultado demostrable | Dependencias |
+| --- | --- | --- |
+| **M0 — Fundamentos** | Repo AGPL, docs, ADR, inventario de dependencias y criterios | — |
+| **M1 — Shell y escena** | App inicia, visor con GLB, escena/IDs, selección | M0 |
+| **M2 — Modelo ↔ Render** | Trasformación, material/luz, cambio de workspace, save/load offline | M1 |
+| **M3 — Geometría y CAD mínimo** | Dibujo 2D y cotas básicos, unidades, vínculos con objetos 3D | M2 |
+| **M4 — Render final** | Adaptador de render local, cámaras, output PNG, materiales avanzados | M2 |
+| **M5 — IA Studio** | Referencias, proveedor local/opcional, revisar GLB generado, catálogo | M2 |
+| **M6 — Web y colaboración** | Cliente web validado, limitaciones declaradas, sync optativa | M2–M5 |
 
-## Fase 1 — MVP de integración
+## M0: documentación, licencia y elección de plataforma
+- [x] Repositorio público.
+- [x] Requisitos de producto acordados: offline-first, escritorio, web futura y espacios de trabajo.
+- [x] Confirmación de licencia AGPL-3.0.
+- [ ] Completar evaluación **reproducible** de Hew / IngeTrazo / geometría CAD y licencias transitivas.
+- [ ] Acordar ADR de motor elegido después de prueba de concepto.
+- [ ] Crear configuración monorepo y pipeline CI mínimo; comandos se añadirán cuando exista código.
+**Salida:** documentación y licencia publicadas, candidatos documentados; sin afirmar que exista aplicación.
 
-- [ ] Abrir un GLB en el visor
-- [ ] Transformar un objeto (mover/rotar/escalar) y persistir sus cambios
-- [ ] Alternar workspaces Modelado y Render sobre la misma escena
-- [ ] Material PBR sencillo y una luz o HDRI en Render
-- [ ] Guardar y reabrir un proyecto sin acceso a internet
-- [ ] Probar escritorio Linux y Windows
+## M1: primera escena
+- [ ] Ventana desktop y menú con Modelado/Render.
+- [ ] Cargar GLB, renderizar jerarquía en visor.
+- [ ] Seleccionar objetos y mostrar inspector.
+- [ ] Identificadores estables y API de comandos.
+**Salida:** grabación/test reproducible de importación y selección; smoke tests Linux/Windows.
 
-**Criterio de éxito:** un mismo objeto cambia en Modelado y se ve actualizado en Render, sin exportación manual.
+## M2: la demostración del producto
+- [ ] Transformar objeto con undo/redo.
+- [ ] Material básico y luz/entorno compartidos.
+- [ ] Guardado nativo local con versión de schema y recuperación.
+- [ ] Cambiar workspace sin reimportar, guardar offline, reabrir íntegro.
+- [ ] Pruebas FR-001..008, NFR-001, NFR-004.
+**Salida:** prueba de extremo a extremo AC-MVP-01/02/03 en dos sistemas.
 
-## Fase 2 — Productividad arquitectónica
+## M3: CAD/arquitectura
+- [ ] Sketch 2D: líneas, polilíneas, arco, snap, capas.
+- [ ] Reglas de unidades, tolerancias y cotas.
+- [ ] Decisión de motor paramétrico y entidades semánticas.
+- [ ] Vistas derivadas donde haya semántica suficiente (NO proyección bidireccional mágica).
+**Salida:** plano de una habitación con cotas y muros 3D verificables.
 
-- [ ] Dibujo CAD 2D, unidades, capas y cotas
-- [ ] Elementos 3D con medidas precisas y operaciones geométricas
-- [ ] Vistas y documentación derivadas del modelo
-- [ ] Importadores adicionales, uno a uno y con pruebas de fidelidad
+## M4: Render
+- [ ] Exportar escena a adaptador compatible y renderizar localmente.
+- [ ] PBR, HDRI, sol, luces, cámaras y presets reproducibles.
+- [ ] Cuantificar consumo VRAM/tiempo/calidad por GPU.
+**Salida:** PNG final reproducible, sin internet, con assets correctamente atribuidos.
 
-## Fase 3 — Visualización
+## M5: IA/bibliotecas
+- [ ] Arrastrar referencia y preservar procedencia/permisos.
+- [ ] Pipeline imagen→GLB local si hardware lo permite, remoto solo con consentimiento.
+- [ ] Validar malla, escala, UV/materiales y licencia antes de agregar a biblioteca.
+**Salida:** sofá generado, revisado, escalado y reutilizado en segundo proyecto.
 
-- [ ] Materiales PBR avanzados
-- [ ] HDRI, sol, cielo, luces, cámaras y recorridos
-- [ ] Exportar imagen usando render local
-- [ ] Optimizar rendimiento con escenas arquitectónicas reales
+## M6: Navegador
+- [ ] UI portable, persistencia con capacidades del navegador (OPFS/IndexedDB según soporte).
+- [ ] Modo de render adaptable y opción remota consentida.
+- [ ] Sincronización con conflictos explícitos, nunca sustitución silenciosa.
+**Salida:** escenario de referencia abre en web compatible; límites publicados.
 
-## Fase 4 — IA y web
+## Tabla de disciplina
+- **Bloqueado:** requiere dependencia, ADR o test pendiente.
+- **En progreso:** issue/PR y responsable identificado.
+- **Validado:** build + test + evidencia + doc + plataformas especificadas.
+- **Publicado:** changelog y distribución reproducible.
 
-- [ ] Módulo de referencias e imagen a modelo GLB
-- [ ] Servicios IA locales y nube optativa
-- [ ] Compilación web del cliente y persistencia local
-- [ ] Compatibilidad multiusuario/sincronización opcional
-
-## Reglas de avance
-
-Un módulo solo se considera terminado con: prueba funcional reproducible, archivo de ejemplo, documentación corta y evidencia. No afirmar compatibilidad que no esté probada.
+**Criterio de priorización:** robustez de proyecto local > integridad geométrica > interoperabilidad > experiencia de render > IA remota. El alcance se revisa con datos, no con listas de marketing.
