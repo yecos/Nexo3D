@@ -126,6 +126,9 @@ export function validateProject(project) {
     const doc = project.hew;
     if (!doc || typeof doc !== 'object' || Array.isArray(doc) ||
         doc.format !== 'hew' || doc.encoding !== 'base64' || doc.version !== 1 ||
+        !Array.isArray(doc.generatedIds) || doc.generatedIds.length > 400 ||
+        new Set(doc.generatedIds).size !== doc.generatedIds.length ||
+        doc.generatedIds.some(id => typeof id !== 'string' || id.length > 120 || !/^obj_[a-zA-Z0-9_-]+$/.test(id)) ||
         typeof doc.data !== 'string' || doc.data.length < 8 ||
         doc.data.length > Math.ceil(MAX_HEW_BYTES / 3) * 4 ||
         !/^[A-Za-z0-9+/]+={0,2}$/.test(doc.data) || doc.data.length % 4 !== 0)
@@ -195,7 +198,7 @@ export function saveProject(project) {
 }
 
 /** Adds a binary snapshot of Hew's editable native scene; never mutates input. */
-export function withHewDocument(project, bytes) {
+export function withHewDocument(project, bytes, generatedIds = []) {
   if (!(bytes instanceof ArrayBuffer) || bytes.byteLength < 22 ||
       bytes.byteLength > MAX_HEW_BYTES)
     throw new Error('Documento Hew vacío o superior a 30 MB.');
@@ -203,7 +206,7 @@ export function withHewDocument(project, bytes) {
   if (a[0] !== 0x50 || a[1] !== 0x4b)
     throw new Error('Hew no produjo su archivo ZIP nativo.');
   const next = {...project, hew: {
-    format: 'hew', encoding: 'base64', version: 1, data: bytesToBase64(bytes)
+    format: 'hew', encoding: 'base64', version: 1, generatedIds: [...generatedIds], data: bytesToBase64(bytes)
   }};
   validateProject(next);
   return next;
