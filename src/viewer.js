@@ -5,6 +5,11 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { base64ToBytes } from './domain.js';
 import { wallSegments } from './cad-domain.js';
+import {sunPosition,qualityOptions,withRenderStudioDefaults} from './render-studio.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {GTAOPass} from 'three/addons/postprocessing/GTAOPass.js';
+import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 
 export class Viewer {
   constructor(container, onSelect, onTransform) {
@@ -17,6 +22,10 @@ export class Viewer {
     this.latestProject = null;
     this.selectedId = null;
     this.dragging = false;
+    this.active = false;
+    this.composer = null;
+    this.aoPass = null;
+    this.renderQualityKey = '';
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#1b2327');
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.02, 4000);
@@ -48,9 +57,11 @@ export class Viewer {
     floor.receiveShadow = true;
     floor.name = 'Fondo no exportable';
     this.scene.add(floor);
+    this.ground = floor;
     this.grid = new THREE.GridHelper(100, 100, '#7a746d', '#41484a');
     this.grid.position.y = 0.002;
     this.scene.add(this.grid);
+    this.grid.visible = false;
     this.gltf = new GLTFLoader();
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
@@ -74,11 +85,66 @@ export class Viewer {
     this.resizeObserver.observe(container);
     this.resize();
     const tick = () => {
-      this.orbit.update();
-      this.renderer.render(this.scene, this.camera);
+      if (this.active) {
+        this.orbit.update();
+        if (this.composer) this.composer.render();
+        else this.renderer.render(this.scene, this.camera);
+      }
       this.animationId = requestAnimationFrame(tick);
     };
     tick();
+  }
+
+  setActive(active) {
+    this.active = Boolean(active);
+    if (this.active) this.resize();
+  }
+
+  disposePostprocessing() {
+    if (!this.composer) return;
+    this.aoPass?.dispose();
+    this.composer.dispose();
+    this.aoPass = null;
+    this.composer = null;
+  }
+
+  applyRenderStudio(settings) {
+    const render = withRenderStudioDefaults(settings);
+    const preset = qualityOptions(render.quality,
+      typeof devicePixelRatio === 'number' ? devicePixelRatio : 1);
+    const signature = [render.quality,render.ambientOcclusion,preset.pixelRatio].join('|');
+    this.renderer.toneMappingExposure = render.exposure;
+    this.sun.position.fromArray(sunPosition(render.sunAzimuth,render.sunElevation,24));
+    this.sun.castShadow = render.shadows;
+    this.renderer.shadowMap.enabled = render.shadows;
+    this.grid.visible = render.showGrid;
+    this.ground.material.color.set(render.groundColor);
+    if (this.renderQualityKey !== signature) {
+      this.renderQualityKey = signature;
+      this.renderer.setPixelRatio(preset.pixelRatio);
+      this.sun.shadow.mapSize.set(preset.shadowMap,preset.shadowMap);
+      this.sun.shadow.map?.dispose();
+      this.sun.shadow.map = null;
+      this.disposePostprocessing();
+      if (render.ambientOcclusion) {
+        try {
+          const composer = new EffectComposer(this.renderer);
+          composer.addPass(new RenderPass(this.scene,this.camera));
+          const ao = new GTAOPass(this.scene,this.camera);
+          ao.output=GTAOPass.OUTPUT.Default;
+          ao.updateGtaoMaterial({radius:0.7,samples:preset.aoSamples});
+          composer.addPass(ao);
+          composer.addPass(new OutputPass());
+          this.composer=composer;
+          this.aoPass=ao;
+        } catch(error) {
+          this.disposePostprocessing();
+          this.onLoadError?.(new Error('Oclusión ambiental no disponible en esta GPU: '+error.message));
+        }
+      }
+      this.resize();
+    }
+    if(this.aoPass)this.aoPass.blendIntensity=render.aoIntensity;
   }
 
   resize() {
@@ -87,6 +153,7 @@ export class Viewer {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
+    this.composer?.setSize(w, h);
   }
 
   pick(e) {
@@ -153,7 +220,10 @@ export class Viewer {
 
   syncCad(project) {
     // Proyección derivada: NO crea un segundo documento editable en el renderer.
-    const visible = new Map((project.cad?.shapes || [])
+    // The imported Hew GLB is a full scene snapshot: rendering the derived CAD
+    // walls as well would visibly duplicate geometry and create z-fighting.
+    const hasHewSnapshot=project.nodes.some(n=>n.source==='hew-interactive');
+    const visible = new Map((hasHewSnapshot ? [] : (project.cad?.shapes || []))
       .filter(s => s.extrusion && project.cad.layers.some(l => l.id === s.layerId && l.visible))
       .map(s => [s.id, s]));
     for (const [id, entry] of this.cadWalls) {
@@ -198,6 +268,7 @@ export class Viewer {
     this.scene.background.set(project.render.background);
     this.ambient.intensity = project.render.ambientIntensity;
     this.sun.intensity = project.render.sunIntensity;
+    this.applyRenderStudio(project.render);
     const known = new Set(project.nodes.map(n => n.id));
     for (const [id, entry] of this.nodes) {
       if (known.has(id)) continue;
@@ -240,6 +311,7 @@ export class Viewer {
     this.resizeObserver.disconnect();
     this.orbit.dispose();
     this.controls.dispose();
+    this.disposePostprocessing();
     this.renderer.dispose();
   }
 }
