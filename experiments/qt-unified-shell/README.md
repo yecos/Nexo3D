@@ -12,8 +12,8 @@
 
 ## Instrucciones para probar
 
-1. Descarga el artefacto **NEXO-Bridge-CAD-Modelado-Render-Windows-PoC** de una ejecución exitosa del [workflow Windows](../../.github/workflows/native-cad-modeling-poc.yml). Instala por separado [IngeCAD](https://github.com/ingelibre/ingecad/releases) e [IngeTrazo](https://github.com/ingelibre/ingetrazo/releases).
-2. Abre NEXO y selecciona IngeCAD.exe e IngeTrazo.exe. Pulsa **Instalar extensión NEXO**. La acción explícita guarda un único archivo en %APPDATA%/ingetrazo/plugins; nunca sobrescribe una extensión modificada por el usuario.
+1. Para un equipo nuevo, ejecuta el instalador privado **NEXO-3D-Setup.exe**. Coloca NEXO, IngeCAD e IngeTrazo bajo una sola carpeta, crea los accesos directos e instala la extensión. Si usas únicamente el ejecutable PoC de una ejecución del [workflow Windows](../../.github/workflows/native-cad-modeling-poc.yml), entonces sí debes tener los editores instalados por separado.
+2. Abre NEXO: detecta los editores incluidos en la carpeta integrada, guarda sus rutas y abre ambos al iniciar. Si una instalación está en otra carpeta, usa los botones **IngeCAD.exe** o **IngeTrazo.exe** como respaldo. NEXO valida el ejecutable dueño de cada ventana y no lanza duplicados. La instalación guarda la extensión en %APPDATA%/ingetrazo/plugins y nunca sobrescribe una extensión modificada por el usuario.
 3. Pulsa **Abrir DWG / DXF** y elige un **DXF con unidades definidas**. Si trabajas con DWG, abre el DWG en CAD, guarda una copia DXF y selecciónala desde NEXO para el vínculo automático. El puente no convierte DWG en vivo.
 4. En CAD dibuja y **guarda en ese mismo DXF**. En Modelado abre IngeTrazo desde NEXO: con la extensión instalada, comienza en blanco y carga la referencia CAD. Traza o copia geometría independiente para crear caras y usar Push/Pull.
 5. **Guarda tu documento IGZ desde IngeTrazo**. La pestaña **Render Live** muestra el modelo GLB y se actualiza al editar geometría y materiales.

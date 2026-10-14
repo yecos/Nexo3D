@@ -35,7 +35,10 @@ from PySide6.QtWidgets import (
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 HWND = wintypes.HWND
 GWL_STYLE, WS_CHILD, WS_POPUP, WS_VISIBLE = -16, 0x40000000, 0x80000000, 0x10000000
-SWP_FRAMECHANGED, SWP_SHOWWINDOW = 0x0020, 0x0040
+SW_HIDE, SW_SHOWNOACTIVATE = 0, 4
+SWP_FRAMECHANGED = 0x0020
+SWP_NOACTIVATE = 0x0010
+SWP_SHOWWINDOW, SWP_HIDEWINDOW = 0x0040, 0x0080
 for name, argtypes, restype in (
     ("GetWindowThreadProcessId", [HWND, ctypes.POINTER(wintypes.DWORD)], wintypes.DWORD),
     ("IsWindowVisible", [HWND], wintypes.BOOL),
@@ -46,66 +49,157 @@ for name, argtypes, restype in (
     ("GetWindowLongPtrW", [HWND, ctypes.c_int], ctypes.c_ssize_t),
     ("SetWindowLongPtrW", [HWND, ctypes.c_int, ctypes.c_ssize_t], ctypes.c_ssize_t),
     ("SetParent", [HWND, HWND], HWND),
-    ("MoveWindow", [HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.BOOL], wintypes.BOOL),
     ("SetWindowPos", [HWND, HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT], wintypes.BOOL),
+    ("GetWindowRect", [HWND, ctypes.POINTER(wintypes.RECT)], wintypes.BOOL),
+    ("ShowWindow", [HWND, ctypes.c_int], wintypes.BOOL),
+    ("InvalidateRect", [HWND, ctypes.POINTER(wintypes.RECT), wintypes.BOOL], wintypes.BOOL),
+    ("UpdateWindow", [HWND], wintypes.BOOL),
+    ("SetFocus", [HWND], HWND),
 ):
     fn = getattr(user32, name)
     fn.argtypes, fn.restype = argtypes, restype
 
+kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+kernel32.OpenProcess.restype = wintypes.HANDLE
+kernel32.QueryFullProcessImageNameW.argtypes = [
+    wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)
+]
+kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+kernel32.CloseHandle.restype = wintypes.BOOL
 
-def find_editor_hwnd(pid: int, title_hint: str) -> int | None:
-    found: list[int] = []
+
+def process_image_path(pid: int) -> Path | None:
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        return None
+    try:
+        size = wintypes.DWORD(32768)
+        buffer = ctypes.create_unicode_buffer(size.value)
+        if not kernel32.QueryFullProcessImageNameW(
+            handle, 0, buffer, ctypes.byref(size)
+        ):
+            return None
+        return Path(buffer.value)
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _find_editor_windows(pid: int | None, title_hint: str) -> list[tuple[int, int]]:
+    found: list[tuple[int, int]] = []
     callback = ctypes.WINFUNCTYPE(wintypes.BOOL, HWND, wintypes.LPARAM)
 
     @callback
     def visit(hwnd, _):
         owner = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
-        if owner.value != pid or not user32.IsWindowVisible(hwnd) or user32.GetWindow(hwnd, 4):
+        if pid is not None and owner.value != pid:
+            return True
+        if user32.GetWindow(hwnd, 4):
+            return True
+        if pid is not None and not user32.IsWindowVisible(hwnd):
             return True
         n = user32.GetWindowTextLengthW(hwnd)
         if n:
             title = ctypes.create_unicode_buffer(n + 1)
             user32.GetWindowTextW(hwnd, title, n + 1)
             if title_hint.casefold() in title.value.casefold():
-                found.append(int(hwnd))
+                found.append((int(hwnd), int(owner.value)))
                 return False
         return True
 
     user32.EnumWindows.argtypes = [callback, wintypes.LPARAM]
     user32.EnumWindows.restype = wintypes.BOOL
     user32.EnumWindows(visit, 0)
-    return found[0] if found else None
+    return found
+
+
+def find_editor_hwnd(pid: int, title_hint: str) -> int | None:
+    matches = _find_editor_windows(pid, title_hint)
+    return matches[0][0] if matches else None
+
+
+def find_existing_editor(
+    title_hint: str, executable_name: str | None = None
+) -> tuple[int, int] | None:
+    matches = _find_editor_windows(None, title_hint)
+    for hwnd, pid in matches:
+        image = process_image_path(pid)
+        if executable_name and (
+            image is None or image.name.casefold() != executable_name.casefold()
+        ):
+            continue
+        return hwnd, pid
+    return None
+
+
+class AttachedProcess:
+    """Small Popen-compatible handle for an editor already running on Windows."""
+
+    def __init__(self, pid: int, hwnd: int):
+        self.pid = pid
+        self.hwnd = hwnd
+
+    def poll(self) -> int | None:
+        return None if user32.IsWindow(self.hwnd) else 0
 
 
 class NativeHost(QWidget):
-    """Windows-only embedding; Qt OpenGL contexts may reject reparenting."""
+    """Windows-only embedding; keep the native child in sync with Qt visibility."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_NativeWindow, True)
         self.hwnd: int | None = None
         self.style: int | None = None
+        self.original_parent: int | None = None
+        self.original_bounds: tuple[int, int, int, int] | None = None
+        self._native_visible = False
 
     def attach(self, hwnd: int):
         if self.hwnd is not None:
             raise RuntimeError("Ya hay una ventana en este espacio.")
-        previous = int(user32.GetWindowLongPtrW(hwnd, GWL_STYLE))
-        user32.SetWindowLongPtrW(hwnd, GWL_STYLE,
-                                (previous | WS_CHILD | WS_VISIBLE) & ~WS_POPUP)
+        previous_style = int(user32.GetWindowLongPtrW(hwnd, GWL_STYLE))
+        rect = wintypes.RECT()
+        if user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+            self.original_bounds = (rect.left, rect.top, rect.right, rect.bottom)
+        user32.SetWindowLongPtrW(
+            hwnd, GWL_STYLE, (previous_style | WS_CHILD | WS_VISIBLE) & ~WS_POPUP
+        )
         ctypes.set_last_error(0)
-        user32.SetParent(hwnd, HWND(int(self.winId())))
+        previous_parent = user32.SetParent(hwnd, HWND(int(self.winId())))
         error = ctypes.get_last_error()
         if error:
-            user32.SetWindowLongPtrW(hwnd, GWL_STYLE, previous)
+            user32.SetWindowLongPtrW(hwnd, GWL_STYLE, previous_style)
+            self.original_bounds = None
             raise OSError(error, ctypes.FormatError(error))
-        self.hwnd, self.style = hwnd, previous
+        self.hwnd = hwnd
+        self.style = previous_style
+        self.original_parent = int(previous_parent) if previous_parent else None
+        self._native_visible = self.isVisible()
+        self.set_native_visible(self._native_visible)
+
+    def set_native_visible(self, visible: bool):
+        """Explicitly mirror QStackedWidget visibility to the child HWND."""
+        self._native_visible = visible
+        if not self.hwnd or not user32.IsWindow(self.hwnd):
+            return
+        user32.ShowWindow(self.hwnd, SW_SHOWNOACTIVATE if visible else SW_HIDE)
         self._fit()
+        if visible:
+            user32.SetFocus(self.hwnd)
+            user32.InvalidateRect(self.hwnd, None, True)
+            user32.UpdateWindow(self.hwnd)
 
     def _fit(self):
         if self.hwnd and user32.IsWindow(self.hwnd):
-            user32.SetWindowPos(self.hwnd, None, 0, 0, max(1, self.width()),
-                                max(1, self.height()), SWP_FRAMECHANGED | SWP_SHOWWINDOW)
+            flags = SWP_FRAMECHANGED | SWP_NOACTIVATE
+            flags |= SWP_SHOWWINDOW if self._native_visible else SWP_HIDEWINDOW
+            user32.SetWindowPos(
+                self.hwnd, None, 0, 0, max(1, self.width()), max(1, self.height()), flags
+            )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -113,17 +207,30 @@ class NativeHost(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self._fit()
+        self.set_native_visible(True)
+
+    def hideEvent(self, event):
+        self.set_native_visible(False)
+        super().hideEvent(event)
 
     def detach(self):
         hwnd, self.hwnd = self.hwnd, None
         if not hwnd or not user32.IsWindow(hwnd):
             return
-        user32.SetParent(hwnd, None)
+        user32.ShowWindow(hwnd, SW_HIDE)
+        user32.SetParent(hwnd, HWND(self.original_parent or 0))
         if self.style is not None:
             user32.SetWindowLongPtrW(hwnd, GWL_STYLE, self.style)
-        user32.SetWindowPos(hwnd, None, 80, 80, 1250, 800,
-                            SWP_FRAMECHANGED | SWP_SHOWWINDOW)
+        left, top, right, bottom = self.original_bounds or (80, 80, 1330, 880)
+        user32.SetWindowPos(
+            hwnd, None, left, top, max(1, right - left), max(1, bottom - top),
+            SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_SHOWWINDOW
+        )
+        user32.InvalidateRect(hwnd, None, True)
+        user32.UpdateWindow(hwnd)
+        self.style = None
+        self.original_parent = None
+        self.original_bounds = None
 
 
 class EditorPane(QWidget):
@@ -170,6 +277,7 @@ class NexoShell(QMainWindow):
             "cad": EditorPane("Selecciona IngeCAD.exe para trabajar con todas sus herramientas CAD."),
             "model": EditorPane("Selecciona IngeTrazo.exe para usar Push/Pull, Offset y caras."),
         }
+        self._autodetect_editors()
         self.stack = QStackedWidget()
         for pane in self.panes.values():
             self.stack.addWidget(pane)
@@ -199,6 +307,87 @@ class NexoShell(QMainWindow):
         tb.addSeparator()
         tb.addAction("IngeCAD.exe", lambda: self._choose_exe("cad"))
         tb.addAction("IngeTrazo.exe", lambda: self._choose_exe("model"))
+
+    def _editor_candidates(self, workspace: str) -> list[Path]:
+        """Find the bundled editors without forcing a file picker on first run."""
+        home = Path(os.environ.get("USERPROFILE") or Path.home())
+        downloads = home / "Downloads"
+        program_files = Path(os.environ.get("PROGRAMFILES", r"C:\Program Files"))
+        program_files_x86 = Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"))
+        local_appdata = Path(os.environ.get("LOCALAPPDATA") or home / "AppData" / "Local")
+        runtime_root = (
+            Path(sys.executable).resolve().parent
+            if getattr(sys, "frozen", False)
+            else Path(__file__).resolve().parent
+        )
+        configured = str(self.settings.value(f"{workspace}/exe", "") or "").strip()
+        bundled = runtime_root / "engines"
+        if workspace == "cad":
+            candidates = [
+                Path(configured) if configured else None,
+                bundled / "IngeCAD" / "ingecad.exe",
+                downloads / "IngeCAD" / "ingecad.exe",
+                program_files / "IngeCAD" / "ingecad.exe",
+                program_files_x86 / "IngeCAD" / "ingecad.exe",
+                local_appdata / "IngeCAD" / "ingecad.exe",
+                *downloads.glob("IngeCAD-*/ingecad/ingecad.exe"),
+                *downloads.glob("IngeCAD*/ingecad.exe"),
+            ]
+        else:
+            candidates = [
+                Path(configured) if configured else None,
+                bundled / "IngeTrazo" / "ingetrazo.exe",
+                program_files / "IngeTrazo" / "ingetrazo.exe",
+                program_files_x86 / "IngeTrazo" / "ingetrazo.exe",
+                local_appdata / "IngeTrazo" / "ingetrazo.exe",
+                downloads / "IngeTrazo" / "ingetrazo.exe",
+                *downloads.glob("IngeTrazo-*/ingetrazo/ingetrazo.exe"),
+                *downloads.glob("IngeTrazo*/ingetrazo.exe"),
+            ]
+        return [candidate for candidate in candidates if candidate is not None]
+
+    def _autodetect_editors(self):
+        for workspace in ("cad", "model"):
+            for candidate in self._editor_candidates(workspace):
+                if candidate.is_file():
+                    resolved = str(candidate.resolve())
+                    self.settings.setValue(f"{workspace}/exe", resolved)
+                    self.panes[workspace].info.setText(
+                        f"Editor detectado automáticamente: {resolved}"
+                    )
+                    break
+
+    @staticmethod
+    def _editor_process_running(exe: Path) -> bool:
+        """Avoid launching a second editor when one is already open."""
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FI", f"IMAGENAME eq {exe.name}", "/FO", "CSV", "/NH"],
+                capture_output=True, text=True, check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except OSError:
+            return False
+        return f'"{exe.name.casefold()}"' in result.stdout.casefold()
+
+    def _attach_existing(self, workspace: str, match: tuple[int, int]):
+        hwnd, pid = match
+        pane = self.panes[workspace]
+        pane.process = AttachedProcess(pid, hwnd)
+        pane.started = time.monotonic()
+        pane.timed_out = False
+        try:
+            pane.host.attach(hwnd)
+        except (OSError, RuntimeError) as exc:
+            pane.process = None
+            pane.info.setText(f"No se pudo alojar la ventana existente: {exc}")
+        else:
+            pane.info.setText("Editor existente integrado en NEXO.")
+
+    def _open_configured_editors(self):
+        """Open both native editors shortly after NEXO becomes visible."""
+        self._launch("cad")
+        QTimer.singleShot(500, lambda: self._launch("model"))
 
     def _show_cad_changes(self):
         if self._cad_diff_error:
@@ -336,20 +525,45 @@ class NexoShell(QMainWindow):
                 "La selección de NEXO no sustituye el dibujo abierto.")
 
     def _switch(self, workspace: str):
+        current = self.stack.currentWidget()
         if workspace == "render":
+            if isinstance(current, EditorPane):
+                current.host.set_native_visible(False)
             self.stack.setCurrentWidget(self.render_pane)
             return
         pane = self.panes[workspace]
-        self.stack.setCurrentWidget(pane)
+        if current is not pane:
+            if isinstance(current, EditorPane):
+                current.host.set_native_visible(False)
+            self.stack.setCurrentWidget(pane)
+        pane.host.set_native_visible(True)
         if pane.process is None:
             self._launch(workspace)
 
     def _launch(self, workspace: str):
         pane = self.panes[workspace]
-        exe = str(self.settings.value(f"{workspace}/exe", "")).strip()
-        if not exe or not Path(exe).is_file():
-            pane.info.setText("Selecciona primero el ejecutable .exe del editor correspondiente.")
+        exe_path = Path(str(self.settings.value(f"{workspace}/exe", "")).strip())
+        if not exe_path.is_file():
+            pane.info.setText(
+                "No se encontró el editor automáticamente. Usa el botón "
+                "IngeCAD.exe/IngeTrazo.exe para elegirlo."
+            )
             return
+
+        title_hint = "IngeCAD" if workspace == "cad" else "IngeTrazo"
+        existing = find_existing_editor(title_hint, exe_path.name)
+        if existing:
+            self._attach_existing(workspace, existing)
+            return
+        if self._editor_process_running(exe_path):
+            pane.info.setText(
+                "El editor ya está abierto en otra ventana; no se inició una copia."
+            )
+            self.statusBar().showMessage(
+                f"{exe_path.name} ya estaba abierto; se conservó la instancia existente.", 7000
+            )
+            return
+
         args = launch_for(workspace, self.plan).arguments
         child_env = None
         if workspace == "model":
@@ -370,14 +584,14 @@ class NexoShell(QMainWindow):
                     "el editor seguirá funcionando normalmente.", 9000)
         try:
             pane.process = subprocess.Popen(
-                [exe, *args], cwd=str(Path(exe).parent), env=child_env)
+                [str(exe_path), *args], cwd=str(exe_path.parent), env=child_env)
         except OSError as exc:
             pane.process = None
             pane.info.setText(f"Error iniciando editor: {exc}")
             return
         pane.started = time.monotonic()
         pane.timed_out = False
-        pane.info.setText("Iniciando editor original…")
+        pane.info.setText(f"Iniciando {exe_path.name}…")
 
     def _send_to_model(self):
         if self.plan is None:
@@ -443,6 +657,7 @@ def main() -> int:
     app = QApplication(sys.argv)
     window = NexoShell()
     window.show()
+    QTimer.singleShot(250, window._open_configured_editors)
     return app.exec()
 
 
