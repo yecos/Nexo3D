@@ -35,7 +35,10 @@ from PySide6.QtWidgets import (
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 HWND = wintypes.HWND
 GWL_STYLE, WS_CHILD, WS_POPUP, WS_VISIBLE = -16, 0x40000000, 0x80000000, 0x10000000
-SWP_FRAMECHANGED, SWP_SHOWWINDOW = 0x0020, 0x0040
+SW_HIDE, SW_SHOWNOACTIVATE = 0, 4
+SWP_FRAMECHANGED = 0x0020
+SWP_NOACTIVATE = 0x0010
+SWP_SHOWWINDOW, SWP_HIDEWINDOW = 0x0040, 0x0080
 for name, argtypes, restype in (
     ("GetWindowThreadProcessId", [HWND, ctypes.POINTER(wintypes.DWORD)], wintypes.DWORD),
     ("IsWindowVisible", [HWND], wintypes.BOOL),
@@ -46,8 +49,12 @@ for name, argtypes, restype in (
     ("GetWindowLongPtrW", [HWND, ctypes.c_int], ctypes.c_ssize_t),
     ("SetWindowLongPtrW", [HWND, ctypes.c_int, ctypes.c_ssize_t], ctypes.c_ssize_t),
     ("SetParent", [HWND, HWND], HWND),
-    ("MoveWindow", [HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.BOOL], wintypes.BOOL),
     ("SetWindowPos", [HWND, HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT], wintypes.BOOL),
+    ("GetWindowRect", [HWND, ctypes.POINTER(wintypes.RECT)], wintypes.BOOL),
+    ("ShowWindow", [HWND, ctypes.c_int], wintypes.BOOL),
+    ("InvalidateRect", [HWND, ctypes.POINTER(wintypes.RECT), wintypes.BOOL], wintypes.BOOL),
+    ("UpdateWindow", [HWND], wintypes.BOOL),
+    ("SetFocus", [HWND], HWND),
 ):
     fn = getattr(user32, name)
     fn.argtypes, fn.restype = argtypes, restype
@@ -79,33 +86,59 @@ def find_editor_hwnd(pid: int, title_hint: str) -> int | None:
 
 
 class NativeHost(QWidget):
-    """Windows-only embedding; Qt OpenGL contexts may reject reparenting."""
+    """Windows-only embedding; keep the native child in sync with Qt visibility."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_NativeWindow, True)
         self.hwnd: int | None = None
         self.style: int | None = None
+        self.original_parent: int | None = None
+        self.original_bounds: tuple[int, int, int, int] | None = None
+        self._native_visible = False
 
     def attach(self, hwnd: int):
         if self.hwnd is not None:
             raise RuntimeError("Ya hay una ventana en este espacio.")
-        previous = int(user32.GetWindowLongPtrW(hwnd, GWL_STYLE))
-        user32.SetWindowLongPtrW(hwnd, GWL_STYLE,
-                                (previous | WS_CHILD | WS_VISIBLE) & ~WS_POPUP)
+        previous_style = int(user32.GetWindowLongPtrW(hwnd, GWL_STYLE))
+        rect = wintypes.RECT()
+        if user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+            self.original_bounds = (rect.left, rect.top, rect.right, rect.bottom)
+        user32.SetWindowLongPtrW(
+            hwnd, GWL_STYLE, (previous_style | WS_CHILD | WS_VISIBLE) & ~WS_POPUP
+        )
         ctypes.set_last_error(0)
-        user32.SetParent(hwnd, HWND(int(self.winId())))
+        previous_parent = user32.SetParent(hwnd, HWND(int(self.winId())))
         error = ctypes.get_last_error()
         if error:
-            user32.SetWindowLongPtrW(hwnd, GWL_STYLE, previous)
+            user32.SetWindowLongPtrW(hwnd, GWL_STYLE, previous_style)
+            self.original_bounds = None
             raise OSError(error, ctypes.FormatError(error))
-        self.hwnd, self.style = hwnd, previous
+        self.hwnd = hwnd
+        self.style = previous_style
+        self.original_parent = int(previous_parent) if previous_parent else None
+        self._native_visible = self.isVisible()
+        self._set_native_visible(self._native_visible)
+
+    def set_native_visible(self, visible: bool):
+        """Explicitly mirror QStackedWidget visibility to the child HWND."""
+        self._native_visible = visible
+        if not self.hwnd or not user32.IsWindow(self.hwnd):
+            return
+        user32.ShowWindow(self.hwnd, SW_SHOWNOACTIVATE if visible else SW_HIDE)
         self._fit()
+        if visible:
+            user32.SetFocus(self.hwnd)
+            user32.InvalidateRect(self.hwnd, None, True)
+            user32.UpdateWindow(self.hwnd)
 
     def _fit(self):
         if self.hwnd and user32.IsWindow(self.hwnd):
-            user32.SetWindowPos(self.hwnd, None, 0, 0, max(1, self.width()),
-                                max(1, self.height()), SWP_FRAMECHANGED | SWP_SHOWWINDOW)
+            flags = SWP_FRAMECHANGED | SWP_NOACTIVATE
+            flags |= SWP_SHOWWINDOW if self._native_visible else SWP_HIDEWINDOW
+            user32.SetWindowPos(
+                self.hwnd, None, 0, 0, max(1, self.width()), max(1, self.height()), flags
+            )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -113,17 +146,30 @@ class NativeHost(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self._fit()
+        self.set_native_visible(True)
+
+    def hideEvent(self, event):
+        self.set_native_visible(False)
+        super().hideEvent(event)
 
     def detach(self):
         hwnd, self.hwnd = self.hwnd, None
         if not hwnd or not user32.IsWindow(hwnd):
             return
-        user32.SetParent(hwnd, None)
+        user32.ShowWindow(hwnd, SW_HIDE)
+        user32.SetParent(hwnd, HWND(self.original_parent or 0))
         if self.style is not None:
             user32.SetWindowLongPtrW(hwnd, GWL_STYLE, self.style)
-        user32.SetWindowPos(hwnd, None, 80, 80, 1250, 800,
-                            SWP_FRAMECHANGED | SWP_SHOWWINDOW)
+        left, top, right, bottom = self.original_bounds or (80, 80, 1330, 880)
+        user32.SetWindowPos(
+            hwnd, None, left, top, max(1, right - left), max(1, bottom - top),
+            SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_SHOWWINDOW
+        )
+        user32.InvalidateRect(hwnd, None, True)
+        user32.UpdateWindow(hwnd)
+        self.style = None
+        self.original_parent = None
+        self.original_bounds = None
 
 
 class EditorPane(QWidget):
@@ -336,11 +382,18 @@ class NexoShell(QMainWindow):
                 "La selección de NEXO no sustituye el dibujo abierto.")
 
     def _switch(self, workspace: str):
+        current = self.stack.currentWidget()
         if workspace == "render":
+            if isinstance(current, EditorPane):
+                current.host.set_native_visible(False)
             self.stack.setCurrentWidget(self.render_pane)
             return
         pane = self.panes[workspace]
-        self.stack.setCurrentWidget(pane)
+        if current is not pane:
+            if isinstance(current, EditorPane):
+                current.host.set_native_visible(False)
+            self.stack.setCurrentWidget(pane)
+        pane.host.set_native_visible(True)
         if pane.process is None:
             self._launch(workspace)
 
