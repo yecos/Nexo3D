@@ -315,10 +315,17 @@ class NexoShell(QMainWindow):
         program_files = Path(os.environ.get("PROGRAMFILES", r"C:\Program Files"))
         program_files_x86 = Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"))
         local_appdata = Path(os.environ.get("LOCALAPPDATA") or home / "AppData" / "Local")
+        runtime_root = (
+            Path(sys.executable).resolve().parent
+            if getattr(sys, "frozen", False)
+            else Path(__file__).resolve().parent
+        )
         configured = str(self.settings.value(f"{workspace}/exe", "") or "").strip()
+        bundled = runtime_root / "engines"
         if workspace == "cad":
             candidates = [
                 Path(configured) if configured else None,
+                bundled / "IngeCAD" / "ingecad.exe",
                 downloads / "IngeCAD" / "ingecad.exe",
                 program_files / "IngeCAD" / "ingecad.exe",
                 program_files_x86 / "IngeCAD" / "ingecad.exe",
@@ -329,6 +336,7 @@ class NexoShell(QMainWindow):
         else:
             candidates = [
                 Path(configured) if configured else None,
+                bundled / "IngeTrazo" / "ingetrazo.exe",
                 program_files / "IngeTrazo" / "ingetrazo.exe",
                 program_files_x86 / "IngeTrazo" / "ingetrazo.exe",
                 local_appdata / "IngeTrazo" / "ingetrazo.exe",

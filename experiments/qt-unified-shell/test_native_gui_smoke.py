@@ -90,6 +90,33 @@ class NativeShellSmokeTests(unittest.TestCase):
                 window.close()
                 app.processEvents()
 
+    def test_bundled_engine_path_is_preferred_when_frozen(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+
+        from nexo_shell import NexoShell
+
+        class FakeSettings:
+            def value(self, key, default=""):
+                return default
+
+        with TemporaryDirectory() as raw:
+            root = Path(raw)
+            cad = root / "engines" / "IngeCAD" / "ingecad.exe"
+            model = root / "engines" / "IngeTrazo" / "ingetrazo.exe"
+            cad.parent.mkdir(parents=True)
+            model.parent.mkdir(parents=True)
+            cad.touch()
+            model.touch()
+
+            shell = NexoShell.__new__(NexoShell)
+            shell.settings = FakeSettings()
+            with patch.object(sys, "executable", str(root / "NEXO.exe")), \
+                    patch.object(sys, "frozen", True, create=True):
+                self.assertEqual(shell._editor_candidates("cad")[0], cad)
+                self.assertEqual(shell._editor_candidates("model")[0], model)
+
 
 if __name__ == "__main__":
     unittest.main()
