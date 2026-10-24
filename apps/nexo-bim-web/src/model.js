@@ -49,16 +49,17 @@ export function validateProject(project) {
     throw Error('Archivo NEXO BIM inválido o versión no compatible.');
   const finite=n=>typeof n==='number'&&Number.isFinite(n);
   const ids=new Set();
+  const levelIds=new Set();
   for(const l of project.levels) {
     if(!l || typeof l.id!=='string'||!l.id||ids.has(l.id) ||
       typeof l.name!=='string'||l.name.length>80 ||
       !finite(l.elevation)||Math.abs(l.elevation)>3000 ||
       !finite(l.height)||l.height<1.8||l.height>20) throw Error('Nivel inválido.');
-    ids.add(l.id);
+    ids.add(l.id);levelIds.add(l.id);
   }
   for(const w of project.walls) {
     if(!w || typeof w.id!=='string'||!w.id||ids.has(w.id) ||
-      !ids.has(w.levelId)||![w.a,w.b].every(a=>Array.isArray(a)&&a.length===2&&a.every(n=>finite(n)&&Math.abs(n)<=10000)) ||
+      !levelIds.has(w.levelId)||![w.a,w.b].every(a=>Array.isArray(a)&&a.length===2&&a.every(n=>finite(n)&&Math.abs(n)<=10000)) ||
       lengthOf(w)<.25||lengthOf(w)>1000 ||
       !finite(w.thickness)||w.thickness<.05||w.thickness>1 ||
       !finite(w.height)||w.height<.2||w.height>20 ||
