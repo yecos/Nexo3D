@@ -21,6 +21,10 @@ test('no se admiten vanos solapados ni documentos inseguros',()=>{
   const p=exampleProject();p.walls[0].height=Infinity;
   assert.throws(()=>validateProject(p),/Muro inválido/);
 });
+test('referencias entre muros y niveles deben apuntar a niveles reales',()=>{
+  const p=exampleProject();p.walls[0].levelId=p.walls[1].id;
+  assert.throws(()=>validateProject(p),/Muro inválido/);
+});
 test('duplicar planta conserva geometría con ids independientes',()=>{
   const p=exampleProject(),src=p.walls.length;
   const l=duplicateLevel(p,'l1');
