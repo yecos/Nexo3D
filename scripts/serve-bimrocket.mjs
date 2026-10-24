@@ -35,7 +35,7 @@ function parseArgs(args) {
 }
 export function mapRequest(url,root) {
   let path;
-  try{path=decodeURIComponent(new URL(url,'http://127.0.0.1').pathname);}
+  try{path=decodeURIComponent(String(url).split(/[?#]/,1)[0]);}
   catch{return null;}
   if(path.includes('\\') || path.includes('\0'))return null;
   const segments=path.split('/');
