@@ -1,0 +1,16 @@
+{
+  "name": "@nexo/bim-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "description": "NEXO BIM: primer modelador de vivienda en navegador sin dependencias runtime",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test src/*.test.js",
+    "check": "node --check src/model.js && node --check src/glb.js && node --check src/app.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

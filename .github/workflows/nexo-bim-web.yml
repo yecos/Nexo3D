@@ -1,0 +1,24 @@
+name: NEXO BIM web MVP
+on:
+  push:
+    paths:
+      - 'apps/nexo-bim-web/**'
+      - '.github/workflows/nexo-bim-web.yml'
+  pull_request:
+    paths:
+      - 'apps/nexo-bim-web/**'
+      - '.github/workflows/nexo-bim-web.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: npm run check
+        working-directory: apps/nexo-bim-web
+      - name: Node test suite
+        run: npm test
+        working-directory: apps/nexo-bim-web
