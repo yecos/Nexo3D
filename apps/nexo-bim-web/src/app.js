@@ -16,7 +16,6 @@ const svgPoint=e=>{
   const point=plan.createSVGPoint();point.x=e.clientX;point.y=e.clientY;
   return point.matrixTransform(plan.getScreenCTM().inverse());
 };
-const pointFromEvent=e=>world(([{x:svgPoint(e).x,y:svgPoint(e).y}][0] && [svgPoint(e).x,svgPoint(e).y]));
 function safeMessage(message,isError=false) {
   el('status').textContent=message;el('status').classList.toggle('error',isError);
 }
