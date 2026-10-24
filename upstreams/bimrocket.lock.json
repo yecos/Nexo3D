@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "name": "BIMROCKET",
+  "repository": "https://github.com/bimrocket/bimrocket.git",
+  "ref": "develop",
+  "commit": "a1210cc9cabb099a7a36bbdc6ba5175ce47f396b",
+  "license": {
+    "options": [
+      "EUPL-1.1-or-later",
+      "LGPL-3.0-or-later"
+    ],
+    "source": "LICENSE.txt",
+    "note": "Verificar encabezados de archivos, copyright y dependencias antes de incorporar o redistribuir."
+  },
+  "purpose": "Motor de edición geométrica, IFC/BCF, visor y exportación de NEXO BIM",
+  "state": "evaluating-not-vendored"
+}
