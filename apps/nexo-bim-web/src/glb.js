@@ -41,9 +41,13 @@ export function projectToGLB(project) {
     const normView=addData(new Uint8Array(new Float32Array(normals).buffer),34962);
     const colView=addData(new Uint8Array(new Float32Array(colors).buffer),34962);
     const count=positions.length/3;
-    const bounds=[0,1,2].map(k=>positions.filter((_,i)=>i%3===k));
+    const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
+    for(let i=0;i<positions.length;i++) {
+      const axis=i%3;min[axis]=Math.min(min[axis],positions[i]);
+      max[axis]=Math.max(max[axis],positions[i]);
+    }
     const posAcc=accessors.push({bufferView:posView,componentType:5126,count,type:'VEC3',
-      min:bounds.map(a=>Math.min(...a)),max:bounds.map(a=>Math.max(...a))})-1;
+      min,max})-1;
     const normAcc=accessors.push({bufferView:normView,componentType:5126,count,type:'VEC3'})-1;
     const colAcc=accessors.push({bufferView:colView,componentType:5126,count,type:'VEC3'})-1;
     const mesh=meshes.push({name:id,primitives:[{attributes:{
