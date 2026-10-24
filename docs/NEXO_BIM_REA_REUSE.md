@@ -60,6 +60,15 @@ Con autorización para preparar un checkout **aislado**, hacer:
 node scripts/rea-bim-audit.mjs prepare --run
 ```
 
+Para lanzar directamente la aplicación BIMROCKET original en localhost como **banco de pruebas reutilizable**, una vez hecho el checkout, ejecutar:
+
+```bash
+node scripts/serve-bimrocket.mjs
+# http://127.0.0.1:4183/
+```
+
+El servidor es de solo lectura, escucha en 127.0.0.1 y no incorpora el código ajeno a Nexo3D. Los servicios que requieren `bimrocket-server` no estarán disponibles en este arranque estático; debemos validarlos posteriormente en una instalación completa.
+
 Para instalar REA, consultar el repositorio oficial `morluto/rea` y el comando `npx rea-agents@latest setup`. Revisar y aprobar el plan propuesto y reiniciar el agente. Verificar con `rea doctor`. No es necesario instalar Ghidra para el análisis estático de JavaScript.
 
 Con REA disponible en PATH, ejecutar el análisis en una ruta controlada:
