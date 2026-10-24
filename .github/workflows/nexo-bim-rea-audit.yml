@@ -1,0 +1,24 @@
+name: NEXO BIM reuse and REA plan
+on:
+  push:
+    paths:
+      - 'scripts/rea-bim-audit.mjs'
+      - 'scripts/rea-bim-audit.test.mjs'
+      - 'upstreams/bimrocket.lock.json'
+      - '.github/workflows/nexo-bim-rea-audit.yml'
+  pull_request:
+    paths:
+      - 'scripts/rea-bim-audit.mjs'
+      - 'scripts/rea-bim-audit.test.mjs'
+      - 'upstreams/bimrocket.lock.json'
+      - '.github/workflows/nexo-bim-rea-audit.yml'
+jobs:
+  validate-plans:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check scripts/rea-bim-audit.mjs
+      - run: node --test scripts/rea-bim-audit.test.mjs
