@@ -38,6 +38,7 @@ export function mapRequest(url,root) {
   try{path=decodeURIComponent(String(url).split(/[?#]/,1)[0]);}
   catch{return null;}
   if(path.includes('\\') || path.includes('\0'))return null;
+  if (!path.startsWith('/')) return null;
   const segments=path.split('/');
   if(segments.includes('..')||segments.includes('.'))return null;
   if(path==='/')path='/app.html';
