@@ -22,3 +22,5 @@ jobs:
           node-version: '22'
       - run: node --check scripts/rea-bim-audit.mjs
       - run: node --test scripts/rea-bim-audit.test.mjs
+      - run: node --check scripts/serve-bimrocket.mjs
+      - run: node --test scripts/serve-bimrocket.test.mjs
